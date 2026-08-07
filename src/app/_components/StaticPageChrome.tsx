@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { BRAND } from '../../content/brand';
 import { STORE_PROFILE } from '../../content/storefront';
 
 const NAV = [

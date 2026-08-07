@@ -16,10 +16,10 @@
 --   * provisioned on the old key — rows move across and defaults are corrected,
 --   * already re-tenanted    — every statement is a no-op.
 --
--- It runs as one transaction, so a failure part-way leaves the tenant key
--- consistent rather than half-migrated.
-
-begin;
+-- No explicit BEGIN/COMMIT, matching every other migration here: the Supabase
+-- CLI already applies each file in its own transaction, so a failure part-way
+-- rolls the whole thing back and leaves the tenant key consistent rather than
+-- half-migrated. An explicit COMMIT would end that outer transaction early.
 
 -- 1. Column defaults ---------------------------------------------------------
 -- `set default` is unconditional, but `alter table` on a missing table aborts
@@ -149,5 +149,3 @@ begin
       sort_order = excluded.sort_order;
 end
 $$;
-
-commit;

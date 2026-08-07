@@ -1,5 +1,5 @@
 -- Combined Supabase Migrations for Trending Juice
--- Generated on 2026-08-07T19:13:23.152Z
+-- Generated on 2026-08-07T19:31:24.316Z
 
 -- ==========================================
 -- MIGRATION FILE: 20260628000000_initial_schema.sql
@@ -1805,5 +1805,47 @@ begin
       sort_order = excluded.sort_order;
 end
 $$;
+
+
+-- ==========================================
+-- MIGRATION FILE: 20260808120000_allow_temporary_staff_role.sql
+-- ==========================================
+
+-- Allow the 'temporary_staff' role to exist in the database.
+--
+-- The application has treated temporary_staff as a first-class role for a long
+-- time: it is in STAFF_ROLES in src/services/authGuards.ts, main.ts routes to
+-- it, Sidebar.tsx narrows the navigation for it, cloudDb.ts trims the pull for
+-- it, and StaffView.tsx offers it in the Add Staff role picker. The two check
+-- constraints written in the initial schema were never extended to match, so
+-- the role could be chosen in the UI but never saved: the staff-admin edge
+-- function's insert failed the constraint and the account was never created.
+--
+-- This only widens the set of accepted values; no existing row changes.
+--
+-- Note that temporary_staff is deliberately absent from the has_staff_role
+-- allowlists in the RLS policies. That is the intended restriction — a
+-- temporary staff member reads their own membership (the "staff memberships
+-- self read" policy is role-agnostic, so sign-in works) and the public menu,
+-- and nothing else. Granting them wider access is a product decision, not part
+-- of making account creation work.
+
+alter table public.staff
+  drop constraint if exists staff_role_check;
+alter table public.staff
+  add constraint staff_role_check
+  check (role in (
+    'developer', 'owner', 'manager', 'cashier',
+    'kitchen', 'waiter', 'delivery', 'temporary_staff'
+  ));
+
+alter table public.staff_memberships
+  drop constraint if exists staff_memberships_role_check;
+alter table public.staff_memberships
+  add constraint staff_memberships_role_check
+  check (role in (
+    'developer', 'owner', 'manager', 'cashier',
+    'kitchen', 'waiter', 'delivery', 'temporary_staff'
+  ));
 
 

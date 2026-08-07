@@ -26,7 +26,7 @@ export default function AppPage() {
       {/* Loading screen (removed by the App class on init) */}
       <div id="loading-screen" aria-label={`Loading ${BRAND.name}`}>
         <img
-          src="/assets/store-logo.svg"
+          src={BRAND.logo || '/assets/store-logo.svg'}
           alt=""
           width={84}
           height={84}

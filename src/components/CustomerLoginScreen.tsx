@@ -522,6 +522,16 @@ export class CustomerLoginScreen {
     `;
 
     // Bind event handlers
+    import('../db/database').then(({ getSetting }) => {
+      getSetting('brandLogoBase64').then(val => {
+        if (val && typeof val === 'string' && val.startsWith('data:image')) {
+          container.querySelectorAll('.brand-panel-logo, .login-logo-img').forEach(img => {
+            img.src = val;
+          });
+        }
+      }).catch(() => {});
+    }).catch(() => {});
+
     const btnHome = document.getElementById('login-home-btn');
     const btnLogo = document.getElementById('login-logo-btn');
     const linkSignup = document.getElementById('link-goto-signup');

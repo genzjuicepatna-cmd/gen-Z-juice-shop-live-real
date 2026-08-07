@@ -23,6 +23,15 @@ function StaffLogin({ onClose, onLoginSuccess }: StaffLoginProps) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [logoUrl, setLogoUrl] = useState(BRAND.logo || '/assets/store-logo.svg');
+
+  React.useEffect(() => {
+    import('../db/database').then(({ getSetting }) => {
+      getSetting('brandLogoBase64').then(val => {
+        if (val && typeof val === 'string' && val.startsWith('data:image')) setLogoUrl(val);
+      }).catch(() => {});
+    }).catch(() => {});
+  }, []);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -86,7 +95,7 @@ function StaffLogin({ onClose, onLoginSuccess }: StaffLoginProps) {
             color: 'var(--juice-coconut)',
           }}
         >
-          <img src="/assets/store-logo.svg" width="72" height="72" alt="" style={{ borderRadius: 22, objectFit: 'contain' }} />
+          <img src={logoUrl || BRAND.logo || '/assets/store-logo.svg'} width="72" height="72" alt="" style={{ borderRadius: 22, objectFit: 'contain', background: '#fff', padding: '4px' }} />
           <h1 style={{ margin: '24px 0 6px', fontFamily: 'var(--font-display)', fontSize: 'var(--display-lg)', lineHeight: 'var(--leading-display)', letterSpacing: 'var(--tracking-display)' }}>{BRAND.name}</h1>
           <p style={{ margin: 0, color: 'var(--juice-mango)', fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', fontSize: '0.75rem' }}>Store Operating System</p>
           <div style={{ display: 'grid', gap: 24, marginTop: 52, maxWidth: 520 }}>

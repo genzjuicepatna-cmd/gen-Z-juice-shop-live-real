@@ -37,6 +37,9 @@ export class StaffView {
     this.editingStaffId = null;
     // Tracks the verified cloud user for the current modal session
     this.verifiedCloudUser = null; // { authUserId, email, confirmed, existingMembership }
+    // Staff id the edge function assigned when it created a login in this modal
+    // session, so Save writes that row instead of minting a second one.
+    this.createdCloudStaffId = null;
   }
 
   async mount(container) {
@@ -140,6 +143,7 @@ export class StaffView {
   /** Reset the cloud verification state */
   resetCloudVerification() {
     this.verifiedCloudUser = null;
+    this.createdCloudStaffId = null;
     const emailEl = document.getElementById('staff-cloud-email');
     const statusEl = document.getElementById('staff-cloud-status');
     if (emailEl) emailEl.value = '';
@@ -168,16 +172,18 @@ export class StaffView {
       btn.innerHTML = '<span aria-hidden="true" class="material-symbols-rounded" style="font-size:14px;animation:spin 1s linear infinite;">progress_activity</span> Creating…';
     }
 
-    let result = await inviteStaffLogin({ email, name, role });
+    const allowExpress = document.getElementById('staff-allow-express')?.checked || false;
+
+    let result = await inviteStaffLogin({ email, name, role, allowExpress });
 
     // Projects without SMTP cannot send an invite. Fall back to setting an
-    // initial password rather than leaving the developer stuck.
+    // initial password rather than leaving the caller stuck.
     if (!result.success && /smtp|invite/i.test(result.message || '')) {
       const password = window.prompt(
         'This project cannot send invite emails.\n\nEnter an initial password for ' + email + ' (minimum 12 characters).\nShare it with them over a trusted channel and have them change it after first sign-in.'
       );
       if (password) {
-        result = await inviteStaffLogin({ email, name, role, password });
+        result = await inviteStaffLogin({ email, name, role, password, allowExpress });
       } else {
         if (btn) { btn.disabled = false; btn.innerHTML = '<span aria-hidden="true" class="material-symbols-rounded" style="font-size:14px;">person_add</span> Create login'; }
         return;
@@ -195,6 +201,12 @@ export class StaffView {
       'success'
     );
     playSound('success');
+
+    // The edge function already inserted the staff row and membership under an
+    // id it picked. Remember that id: without it, Save fell through to
+    // db.staff.add(), Dexie handed out an unrelated local autoincrement id, and
+    // the sync pushed *that* id back up as a second staff row for one person.
+    this.createdCloudStaffId = Number(result.data?.staffId) || null;
 
     // Re-verify so the modal picks up the new account and Save unblocks.
     this.showCloudStatus(await lookupAuthUser(email));
@@ -217,9 +229,19 @@ export class StaffView {
     const data = result.data;
     if (!data?.found) {
       // "This person must sign up first" was a dead end: there is no public
-      // sign-up for staff. A developer can now create the login here instead
-      // of running scripts/provision-admin.js from a terminal.
-      const canInvite = authService.getCurrentStaff()?.role === 'developer';
+      // sign-up for staff. The login can now be created here instead of running
+      // scripts/provision-admin.js from a terminal.
+      //
+      // Owners belong here too. This was gated on `role === 'developer'`, which
+      // left an owner — the person who actually hires the cashiers, waiters and
+      // kitchen staff — staring at "Ask a developer to create this login" for
+      // every single hire, even though the edge function has always accepted
+      // owners for exactly these roles. Only owner/developer logins are
+      // reserved for developers, so mirror that rule and nothing broader.
+      const currentRole = authService.getCurrentStaff()?.role;
+      const selectedRole = document.getElementById('staff-role')?.value;
+      const reservedRole = selectedRole === 'owner' || selectedRole === 'developer';
+      const canInvite = currentRole === 'developer' || (currentRole === 'owner' && !reservedRole);
       statusEl.innerHTML = `
         <div style="display:flex;flex-direction:column;gap:8px;padding:8px 10px;border-radius:var(--radius-sm);background:rgba(var(--color-warning-rgb),0.10);border:1px solid rgba(var(--color-warning-rgb),0.24);">
           <div style="display:flex;align-items:center;gap:6px;">
@@ -235,7 +257,11 @@ export class StaffView {
               Sends a Supabase invite email. If the project has no SMTP configured you will be asked for an initial password instead.
             </div>
           ` : `
-            <div style="font-size:0.62rem;color:var(--text-muted);">Ask a developer to create this login.</div>
+            <div style="font-size:0.62rem;color:var(--text-muted);">
+              ${reservedRole
+                ? 'Only a developer can create an owner or developer login.'
+                : 'Ask an owner or developer to create this login.'}
+            </div>
           `}
         </div>`;
       this.verifiedCloudUser = null;
@@ -309,6 +335,12 @@ export class StaffView {
       // Reset verification when role changes
       if (!CLOUD_REQUIRED_ROLES.includes(document.getElementById('staff-role').value)) {
         this.resetCloudVerification();
+      } else if (!this.verifiedCloudUser) {
+        // The "no login exists" panel gates its Create login button on the role
+        // that was selected when it rendered. Drop it so the new role is judged
+        // by a fresh Verify rather than by a stale button.
+        const statusEl = document.getElementById('staff-cloud-status');
+        if (statusEl) statusEl.innerHTML = '';
       }
     });
 
@@ -381,14 +413,31 @@ export class StaffView {
         await db.staff.update(this.editingStaffId, updateData);
         showToast('Staff member updated!', 'success');
       } else {
-        await db.staff.add({
+        const newStaff = {
           name, role, phone, allowExpress,
           cloudUserId,
           isActive: true,
           createdAt: new Date().toISOString(),
           isSynced: 0,
           _platform: 'nextgenos'
-        });
+        };
+
+        if (this.createdCloudStaffId) {
+          // A login was created in this modal session, so the cloud already has
+          // a staff row under an id it chose. Write the local row at that id so
+          // the two are one staff member rather than two.
+          const occupant = await db.staff.get(this.createdCloudStaffId);
+          if (occupant && occupant.cloudUserId !== cloudUserId) {
+            showToast(
+              `Local staff #${this.createdCloudStaffId} is already ${occupant.name}. Sync this device, then try again.`,
+              'error'
+            );
+            return;
+          }
+          await db.staff.put({ ...newStaff, id: this.createdCloudStaffId });
+        } else {
+          await db.staff.add(newStaff);
+        }
         showToast('Staff member added!', 'success');
       }
 

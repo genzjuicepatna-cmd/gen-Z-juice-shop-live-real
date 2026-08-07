@@ -35,7 +35,7 @@ export function StaticPageChrome({
     <div className="static-page">
       <header className="static-page-nav">
         <a className="static-page-brand" href="/">
-          <img src="/assets/store-logo.svg" alt="" width={28} height={28} />
+          <img src={BRAND.logo || '/assets/store-logo.svg'} alt="" width={28} height={28} />
           <span>{STORE_PROFILE.name.toUpperCase()}</span>
         </a>
         <nav aria-label="Main">

@@ -48,6 +48,11 @@ export const BRAND = {
    * amount of renaming the store would have caught.
    */
   rewardsName: 'Sip Club',
+  /** Brand assets default paths (can also be overridden in Admin -> Branding) */
+  logo: '/assets/store-logo.svg',
+  favicon: '/favicon.svg',
+  appIcon192: '/icons/icon-192.png',
+  appIcon512: '/icons/icon-512.png',
 } as const;
 
 export const CONTACT = {

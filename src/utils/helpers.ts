@@ -252,3 +252,19 @@ export function reportStatusChange(
     showToast(`${successMessage} — saved offline, will sync when reconnected.`, 'warning');
   }
 }
+
+/**
+ * Resolves the dynamic store logo (from Admin -> Branding settings or fallback).
+ */
+export async function getStoreLogo() {
+  try {
+    const { getSetting } = await import('../db/database');
+    const customLogo = await getSetting('brandLogoBase64');
+    if (customLogo && typeof customLogo === 'string' && customLogo.startsWith('data:image')) {
+      return customLogo;
+    }
+  } catch (err) {
+    // Database uninitialised or offline fallback
+  }
+  return '/assets/store-logo.svg';
+}

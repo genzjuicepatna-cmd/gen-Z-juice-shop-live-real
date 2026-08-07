@@ -126,6 +126,15 @@ export class Sidebar {
       </div>
     `;
 
+    import('../db/database').then(({ getSetting }) => {
+      getSetting('brandLogoBase64').then(val => {
+        if (val && typeof val === 'string' && val.startsWith('data:image')) {
+          const img = container.querySelector('.sidebar-logo-img');
+          if (img) img.src = val;
+        }
+      }).catch(() => {});
+    }).catch(() => {});
+
     // Nav items are anchors, so the href performs the navigation and keyboard
     // activation comes for free. This only calls preventDefault so the browser
     // does not also push a duplicate history entry.

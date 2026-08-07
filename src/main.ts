@@ -549,6 +549,15 @@ class App {
       </div>
     `;
 
+    import('./db/database').then(({ getSetting }) => {
+      getSetting('brandLogoBase64').then(val => {
+        if (val && typeof val === 'string' && val.startsWith('data:image')) {
+          const logoImg = document.querySelector('#app-logo .logo-img');
+          if (logoImg) (logoImg as HTMLImageElement).src = val;
+        }
+      }).catch(() => {});
+    }).catch(() => {});
+
     // Printer status button
     document.getElementById('printer-status-btn').addEventListener('click', async () => {
       const { printerService } = await import('./services/printer');

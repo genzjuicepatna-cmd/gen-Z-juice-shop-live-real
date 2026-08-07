@@ -45,14 +45,14 @@ function getCustomerRouteFromHash() {
   return CUSTOMER_ROUTES[page] ? page : 'home';
 }
 
-function CustomerShellNav({ activePage, cartCount, loggedInCustomer, onNavigate, onOpenCart, onSignIn, onLogout }) {
+function CustomerShellNav({ activePage, cartCount, loggedInCustomer, onNavigate, onOpenCart, onSignIn, onLogout, logoUrl }) {
   const desktopRoutes = ['menu', 'offers', 'about', 'catering', 'support'];
   const mobileRoutes = ['home', 'menu', 'offers', 'account', 'support'];
   return (
     <>
       <header className="customer-shell-nav">
         <a className="store-brand" href="#/self-order" onClick={(e) => { e.preventDefault(); onNavigate('home'); }}>
-          <img src="/assets/store-logo.svg" className="store-brand-mark" alt={`${BRAND.name} logo`} style={{ objectFit: 'contain', padding: '2px', background: '#fff' }} />
+          <img src={logoUrl || BRAND.logo || '/assets/store-logo.svg'} className="store-brand-mark" alt={`${BRAND.name} logo`} style={{ objectFit: 'contain', padding: '2px', background: '#fff' }} />
           <div>{BRAND.name}</div>
         </a>
         <nav className="store-nav-links" aria-label="Customer navigation">
@@ -151,14 +151,21 @@ export function CustomerApp({ app }) {
   const [activeDetailItem, setActiveDetailItem] = useState(null);
   const [showLoyaltyDrawer, setShowLoyaltyDrawer] = useState(false);
 
-  // Centralized Store Binding
-  const [cart, setCart] = useState(globalStore.state.cart);
+  const [logoUrl, setLogoUrl] = useState(BRAND.logo || '/assets/store-logo.svg');
   const [storeSettings, setStoreSettings] = useState({
     name: BRAND.name,
     tagline: BRAND.tagline,
     phone: '',
     address: ''
   });
+
+  useEffect(() => {
+    getSetting('brandLogoBase64').then(val => {
+      if (val && typeof val === 'string' && val.startsWith('data:image')) {
+        setLogoUrl(val);
+      }
+    }).catch(() => {});
+  }, []);
 
   // Polling / WebSocket channels for telemetry
   const statusChannelRef = useRef(null);
@@ -831,6 +838,7 @@ export function CustomerApp({ app }) {
             onOpenCart={() => { playSound(800, 80); setState('cart'); }}
             onSignIn={handleShowLogin}
             onLogout={handleLogout}
+            logoUrl={logoUrl}
           />
           {customerPage === 'offers' && <OffersPage onBack={() => openCustomerPage('home')} onOrder={openMenu} offers={customerOffers} />}
           {customerPage === 'about' && <AboutPage onBack={() => openCustomerPage('home')} />}

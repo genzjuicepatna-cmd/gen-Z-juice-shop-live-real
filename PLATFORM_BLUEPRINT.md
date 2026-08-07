@@ -2,7 +2,10 @@
 
 > **Codebase**: **Trending Juice** Restaurant OS  
 > **Version**: 2.0.0 · **Brand**: NextGenOS  
-> **Live Domain**: [trendingjuice.in](https://trendingjuice.in) · **APK**: `TrendingJuice.apk`  
+> **Live URL**: [juice-customer.vercel.app](https://juice-customer.vercel.app) · **APK**: `TrendingJuice.apk`  
+> **Intended domain**: `trendingjuice.in` — **not registered**. Until it is, set
+> `NEXT_PUBLIC_STORE_ORIGIN` to whatever origin actually serves the site; the
+> canonical tags, JSON-LD, robots.txt and sitemap are all derived from it.  
 > **Analysis Date**: 27 May 2026
 
 ---

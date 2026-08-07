@@ -96,7 +96,19 @@ test('the sitemap generator and the app agree on the route list', () => {
     );
   }
   // Origin lives in src/content/brand.ts; robots.txt has to agree with it.
-  assert.match(read('public/robots.txt'), new RegExp(`Sitemap: ${STORE_ORIGIN}/sitemap\\.xml`));
+  //
+  // The POS build writes a Disallow-all robots.txt to the same path — the staff
+  // portal serves this storefront shell and must not be indexed — so which form
+  // is on disk depends on which build ran last. Assert against the portal
+  // instead of assuming the customer one, or `npm run build:pos && npm test`
+  // fails on a file that is correct.
+  const robots = read('public/robots.txt');
+  if ((process.env.NEXT_PUBLIC_APP_PORTAL || '').trim().toLowerCase() === 'pos') {
+    assert.match(robots, /^User-agent: \*\nDisallow: \/$/m, 'the POS build must disallow all crawlers');
+    assert.doesNotMatch(robots, /Sitemap:/, 'the POS build must not advertise a sitemap');
+  } else {
+    assert.match(robots, new RegExp(`Sitemap: ${STORE_ORIGIN}/sitemap\\.xml`));
+  }
 });
 
 test('structured data ships as build output, not runtime injection', () => {

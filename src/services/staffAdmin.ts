@@ -2,16 +2,24 @@
 import { getSupabaseClient } from './supabaseClient';
 
 import { STORE_ID } from '../content/brand';
+import { STAFF_ROLES } from './authGuards';
 const DEFAULT_STORE_ID = STORE_ID;
-const STAFF_ROLES = ['developer', 'owner', 'manager', 'cashier', 'kitchen', 'waiter', 'delivery'];
 
 function getStoreId() {
   return localStorage.getItem('store_id') || DEFAULT_STORE_ID;
 }
 
+/**
+ * Returns '' for anything not in STAFF_ROLES so the caller can refuse.
+ *
+ * This used to fall back to 'cashier', which meant a role this module did not
+ * recognise was pushed to the cloud as a *different role* without a word to
+ * anyone — the local row said one thing and the staff row and membership that
+ * gate RLS said another. Silently assigning permissions is worse than failing.
+ */
 function normalizeRole(role) {
   const value = String(role || '').trim().toLowerCase();
-  return STAFF_ROLES.includes(value) ? value : 'cashier';
+  return STAFF_ROLES.includes(value) ? value : '';
 }
 
 function isActive(value) {
@@ -63,6 +71,9 @@ export async function syncStaffViaAdminFunction(staff) {
   const mapped = mapStaffForAdminFunction(staff);
   if (!mapped.name) {
     return { success: false, message: 'Staff name is required.' };
+  }
+  if (!mapped.role) {
+    return { success: false, message: `Unrecognised staff role "${staff?.role}".` };
   }
   return invokeStaffAdmin('upsert-staff', { staff: mapped });
 }

@@ -260,8 +260,16 @@ export async function getStoreLogo() {
   try {
     const { getSetting } = await import('../db/database');
     const customLogo = await getSetting('brandLogoBase64');
-    if (customLogo && typeof customLogo === 'string' && customLogo.startsWith('data:image')) {
+    if (customLogo && typeof customLogo === 'string' && (customLogo.startsWith('data:image') || customLogo.startsWith('http'))) {
       return customLogo;
+    }
+    const { getSupabaseClient } = await import('../services/supabaseClient');
+    const supabase = await getSupabaseClient();
+    if (supabase) {
+      const { data } = await supabase.from('store_branding').select('logo_url').eq('store_id', 'trending-juice').maybeSingle();
+      if (data?.logo_url && (data.logo_url.startsWith('data:image') || data.logo_url.startsWith('http'))) {
+        return data.logo_url;
+      }
     }
   } catch (err) {
     // Database uninitialised or offline fallback

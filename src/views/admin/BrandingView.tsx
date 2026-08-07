@@ -99,6 +99,36 @@ export function BrandingView() {
           newConfig[key] = val;
         }
       }
+
+      // Fetch cloud brand settings from Supabase if connected
+      try {
+        const { getSupabaseClient } = await import('../../services/supabaseClient');
+        const supabase = await getSupabaseClient();
+        if (supabase) {
+          const { data: cloudRow } = await supabase.from('store_branding').select('*').eq('store_id', 'trending-juice').maybeSingle();
+          if (cloudRow) {
+            if (cloudRow.logo_url) newConfig.brandLogoBase64 = cloudRow.logo_url;
+            if (cloudRow.banner_url) newConfig.brandBannerBase64 = cloudRow.banner_url;
+            if (cloudRow.restaurant_name) newConfig.restaurantName = cloudRow.restaurant_name;
+            if (cloudRow.tagline) newConfig.restaurantTagline = cloudRow.tagline;
+            if (cloudRow.accent_color) newConfig.brandAccentColor = cloudRow.accent_color;
+            if (cloudRow.secondary_color) newConfig.brandSecondaryColor = cloudRow.secondary_color;
+            if (cloudRow.bg_start) newConfig.brandBgGradientStart = cloudRow.bg_start;
+            if (cloudRow.bg_end) newConfig.brandBgGradientEnd = cloudRow.bg_end;
+            if (cloudRow.kiosk_welcome) newConfig.brandKioskWelcome = cloudRow.kiosk_welcome;
+            if (cloudRow.kiosk_footer) newConfig.brandKioskFooter = cloudRow.kiosk_footer;
+            if (cloudRow.instagram) newConfig.brandSocialInstagram = cloudRow.instagram;
+            if (cloudRow.facebook) newConfig.brandSocialFacebook = cloudRow.facebook;
+            if (cloudRow.google_maps) newConfig.brandSocialGoogleMaps = cloudRow.google_maps;
+            if (cloudRow.zomato) newConfig.brandSocialZomato = cloudRow.zomato;
+            if (cloudRow.swiggy) newConfig.brandSocialSwiggy = cloudRow.swiggy;
+            if (cloudRow.whatsapp) newConfig.brandSocialWhatsApp = cloudRow.whatsapp;
+          }
+        }
+      } catch (cloudFetchErr) {
+        console.warn('[BrandingView] Could not fetch cloud store_branding:', cloudFetchErr);
+      }
+
       setConfig(newConfig);
 
       const storedCopy: Record<string, any> = {};
@@ -293,7 +323,37 @@ export function BrandingView() {
       );
       await setSetting(STOREFRONT_SETTING_KEYS.featuredItemIds, copy.featuredItemIds);
 
-      showToast('Branding settings saved! 🎨', 'success');
+      // Sync to Supabase cloud database
+      try {
+        const { getSupabaseClient } = await import('../../services/supabaseClient');
+        const supabase = await getSupabaseClient({ persistSession: true });
+        if (supabase) {
+          await supabase.from('store_branding').upsert({
+            store_id: 'trending-juice',
+            logo_url: config.brandLogoBase64 || '',
+            banner_url: config.brandBannerBase64 || '',
+            restaurant_name: config.restaurantName.trim() || 'Trending Juice',
+            tagline: config.restaurantTagline.trim() || '',
+            accent_color: config.brandAccentColor,
+            secondary_color: config.brandSecondaryColor,
+            bg_start: config.brandBgGradientStart,
+            bg_end: config.brandBgGradientEnd,
+            kiosk_welcome: config.brandKioskWelcome.trim() || '',
+            kiosk_footer: config.brandKioskFooter.trim() || '',
+            instagram: config.brandSocialInstagram.trim() || '',
+            facebook: config.brandSocialFacebook.trim() || '',
+            google_maps: config.brandSocialGoogleMaps.trim() || '',
+            zomato: config.brandSocialZomato.trim() || '',
+            swiggy: config.brandSocialSwiggy.trim() || '',
+            whatsapp: config.brandSocialWhatsApp.trim() || '',
+            updated_at: new Date().toISOString()
+          });
+        }
+      } catch (cloudErr) {
+        console.warn('[BrandingView] Cloud sync to store_branding skipped:', cloudErr);
+      }
+
+      showToast('Branding settings saved & synced to cloud! 🎨', 'success');
     } catch (err: any) {
       showToast('Save failed: ' + err.message, 'error');
     }

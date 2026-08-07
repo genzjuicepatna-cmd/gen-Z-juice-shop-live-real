@@ -1,0 +1,8 @@
+{
+  "appId": "com.trendingjuice.pos",
+  "appName": "Trending Juice",
+  "webDir": "dist",
+  "android": {
+    "allowMixedContent": false
+  }
+}

@@ -1,0 +1,6 @@
+-- Deprecated compatibility entrypoint.
+--
+-- The canonical, reproducible schema is the ordered migration chain under
+-- supabase/migrations/. Apply it with the Supabase CLI after taking a database
+-- backup. This file intentionally contains no executable schema statements so
+-- a stale snapshot cannot bypass later launch-security migrations.

@@ -1,0 +1,1523 @@
+// @ts-nocheck
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { db, getSetting, setSetting } from '../../db/database';
+import { escapeHtml, showToast, playSound, vibrateDevice, safeCurrencySymbol } from '../../utils/helpers';
+import { orderNotificationService, RINGTONE_OPTIONS, ORDER_ALERT_SETTINGS } from '../../services/orderNotification';
+import type { RingtoneId } from '../../services/orderNotification';
+import { printerService } from '../../services/printer';
+import { ReceiptBuilder } from '../../services/receipt';
+import { exportAllData, exportOrdersCSV, importData } from '../../utils/dataExport';
+import { logDataExported } from '../../utils/activityLogger';
+import { signOutCloudStaff } from '../../services/supabaseClient';
+import { authService } from '../../services/auth';
+
+import { BRAND, addressLine } from '../../content/brand';
+const CONFIG_KEYS = [
+  'restaurantName', 'restaurantTagline', 'restaurantPhone', 'restaurantAddress',
+  'upiId', 'upiName', 'gstPercent', 'printerWidth',
+  'orderNumberPrefix', 'supabaseUrl', 'supabaseKey', 'supabaseEmail',
+  'gstin', 'fssaiNumber', 'restaurantEmail', 'restaurantWebsite',
+  'operatingHours', 'receiptFooter', 'printDensity', 'printCopies',
+  'showLogoOnReceipt', 'showAddressOnReceipt', 'showPhoneOnReceipt',
+  'showGstinOnReceipt', 'showFssaiOnReceipt', 'showNotesOnReceipt',
+  'showFooterOnReceipt', 'autoPrintOnConfirm', 'googleClientId',
+  'autoUploadToDrive', 'invoiceTemplate', 'invoicePrimaryColor',
+  'invoiceFontFamily', 'invoiceLogoUrl', 'invoiceTitle', 'invoiceTerms',
+  'invoiceShowSignature', 'invoiceSignatureText', 'invoiceShowGrid',
+  'invoiceShowWatermark', 'invoiceShowUpiQr', 'currencyCode',
+  'currencySymbol', 'taxType', 'taxLabel', 'autoLockTerminal',
+  'autoLockTimeout', 'sessionDuration', 'app_theme'
+];
+
+export function SettingsView() {
+  const [config, setConfig] = useState<Record<string, any>>({});
+  const [loading, setLoading] = useState(true);
+  const [settingsTab, setSettingsTab] = useState<'profile' | 'payments' | 'printer' | 'invoice' | 'cloud' | 'security' | 'notifications'>('profile');
+  const [activePreviewTab, setActivePreviewTab] = useState<'thermal' | 'invoice'>('thermal');
+  const [invoiceHtml, setInvoiceHtml] = useState('');
+  const [printerConnected, setPrinterConnected] = useState(printerService.isConnected);
+  const [driveConnected, setDriveConnected] = useState(false);
+  const [syncTesting, setSyncTesting] = useState(false);
+  const [supabasePassword, setSupabasePassword] = useState('');
+
+  // Notification alert settings state
+  const [alertEnabled, setAlertEnabled] = useState(true);
+  const [alertRingtone, setAlertRingtone] = useState<RingtoneId>('kitchen_chime');
+  const [alertVolume, setAlertVolume] = useState(80);
+  const [alertDuration, setAlertDuration] = useState(6);
+  const [alertSystemNotif, setAlertSystemNotif] = useState(true);
+  const [alertVibration, setAlertVibration] = useState(true);
+  const [alertRemoteOnly, setAlertRemoteOnly] = useState(false);
+  const [notifPermission, setNotifPermission] = useState<string>('default');
+  const [permissionError, setPermissionError] = useState(false);
+
+  const importFileInputRef = useRef<HTMLInputElement>(null);
+  const isPrinterSupported = printerService.isSupported();
+
+  // Load notification settings on mount
+  useEffect(() => {
+    (async () => {
+      const s = await orderNotificationService.getSettings();
+      setAlertEnabled(s.enabled);
+      setAlertRingtone(s.ringtone);
+      setAlertVolume(s.volume);
+      setAlertDuration(s.duration);
+      setAlertSystemNotif(s.systemNotif);
+      setAlertVibration(s.vibration);
+      setAlertRemoteOnly(s.filterRemoteOnly);
+      if ('Notification' in window) setNotifPermission(Notification.permission);
+    })();
+  }, []);
+
+  const saveAlertSetting = async (key: string, value: any) => {
+    await setSetting(key, value);
+  };
+
+  const loadConfig = async () => {
+    try {
+      setLoading(true);
+      const data: Record<string, any> = {};
+      for (const key of CONFIG_KEYS) {
+        data[key] = await getSetting(key) || '';
+      }
+
+      // Default toggles
+      const defaultOn = ['showLogoOnReceipt', 'showAddressOnReceipt', 'showPhoneOnReceipt', 'showFooterOnReceipt', 'invoiceShowGrid', 'invoiceShowUpiQr'];
+      for (const t of defaultOn) {
+        if (data[t] === '') data[t] = 'true';
+      }
+      const defaultOff = ['showGstinOnReceipt', 'showFssaiOnReceipt', 'showNotesOnReceipt', 'autoPrintOnConfirm', 'autoUploadToDrive', 'invoiceShowSignature', 'invoiceShowWatermark', 'autoLockTerminal'];
+      for (const t of defaultOff) {
+        if (data[t] === '') data[t] = 'false';
+      }
+
+      // Sensible standard defaults
+      if (!data.printerWidth) data.printerWidth = '58';
+      if (!data.printDensity) data.printDensity = 'normal';
+      if (!data.printCopies) data.printCopies = '1';
+      if (!data.invoiceTemplate) data.invoiceTemplate = 'minimalist';
+      if (!data.invoicePrimaryColor) data.invoicePrimaryColor = '#FF5E36';
+      if (!data.invoiceFontFamily) data.invoiceFontFamily = 'sans-serif';
+      if (!data.invoiceTitle) data.invoiceTitle = 'TAX INVOICE';
+      if (!data.invoiceTerms) data.invoiceTerms = '1. Goods once sold cannot be returned.\n2. Please check bill before leaving.';
+      if (!data.invoiceSignatureText) data.invoiceSignatureText = 'Authorized Signatory';
+      if (!data.currencyCode) data.currencyCode = 'INR';
+      if (!data.currencySymbol) data.currencySymbol = '₹';
+      if (!data.taxType) data.taxType = 'GST';
+      if (!data.taxLabel) data.taxLabel = 'GST';
+      if (!data.autoLockTimeout) data.autoLockTimeout = '5';
+      if (!data.sessionDuration) data.sessionDuration = '8';
+      if (!data.app_theme) data.app_theme = localStorage.getItem('app_theme') || 'system';
+
+      setConfig(data);
+
+      // Check Drive status
+      const { isDriveConnected } = await import('../../services/driveUpload');
+      setDriveConnected(isDriveConnected());
+    } catch (err) {
+      console.error('Failed to load settings:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadConfig();
+
+    // Setup printer state listeners
+    const originalOnStatusChange = printerService.onStatusChange;
+    printerService.onStatusChange = (isConnected) => {
+      setPrinterConnected(isConnected);
+      const dotHeader = document.getElementById('printer-status-dot');
+      const textHeader = document.getElementById('printer-status-text');
+      if (dotHeader) dotHeader.className = `status-dot ${isConnected ? 'online' : 'offline'}`;
+      if (textHeader) textHeader.textContent = isConnected ? 'Printer ready' : 'Printer off';
+
+      if (originalOnStatusChange) {
+        originalOnStatusChange(isConnected);
+      }
+    };
+
+    return () => {
+      printerService.onStatusChange = originalOnStatusChange;
+    };
+  }, []);
+
+  const handleConfigChange = (key: string, value: any) => {
+    setConfig(prev => ({ ...prev, [key]: value }));
+  };
+
+  // --- Bluetooth Thermal Printer connect triggers ---
+  const handleTogglePrinter = async () => {
+    playSound(800, 100);
+    vibrateDevice([40]);
+    if (printerConnected) {
+      try {
+        await printerService.disconnect();
+        showToast('Printer disconnected', 'info');
+      } catch (e) {
+        console.error('Failed to disconnect:', e);
+      }
+    } else {
+      try {
+        setPermissionError(false);
+        showToast('Connecting to Bluetooth printer...', 'info');
+        await printerService.connect();
+        showToast('Printer connected successfully!', 'success');
+      } catch (e: any) {
+        if (e.name !== 'NotFoundError') {
+          if (e.message && (e.message.includes('Permission denied') || e.message.includes('permission denied') || e.message.includes('Permission'))) {
+            setPermissionError(true);
+            showToast('Permission denied. Please allow "Nearby Devices" or "Bluetooth" permission in App settings.', 'error', 7000);
+          } else {
+            showToast('Bluetooth error: ' + e.message, 'error');
+          }
+        }
+      }
+    }
+  };
+
+  const handlePrintTest = async () => {
+    playSound(800, 100);
+    vibrateDevice([40]);
+    if (!printerConnected) return;
+
+    try {
+      const pw = config.printerWidth || '58';
+      const width = pw === '58' ? 32 : pw === '76' ? 42 : pw === '80' ? 48 : 32;
+      const rb = new ReceiptBuilder(width);
+      
+      const testBytes = rb
+        .initialize()
+        .center()
+        .big()
+        .text(config.restaurantName || BRAND.name)
+        .normal()
+        .text('BLE Printer Test page')
+        .line('=')
+        .left()
+        .text('Connection status: SUCCESS')
+        .text(`Paper width format: ${pw}mm (${width} columns)`)
+        .text(`Date & Time: ${new Date().toLocaleString('en-IN')}`)
+        .line('-')
+        .center()
+        .text('Everything looks good! 👍')
+        .feed(3)
+        .cut()
+        .build();
+
+      await printerService.print(testBytes);
+      showToast('Test page printed!', 'success');
+    } catch (e: any) {
+      console.error('Test print failed:', e);
+      showToast('Print error: ' + e.message, 'error');
+    }
+  };
+
+  // --- Google Drive Authentication connect/disconnect ---
+  const handleToggleDrive = async () => {
+    playSound(800, 100);
+    vibrateDevice([40]);
+    const { isDriveConnected, authenticateGDrive, disconnectGDrive } = await import('../../services/driveUpload');
+
+    if (isDriveConnected()) {
+      disconnectGDrive();
+      showToast('Google Drive disconnected', 'info');
+      setDriveConnected(false);
+    } else {
+      const clientId = config.googleClientId?.trim();
+      if (!clientId) {
+        showToast('Please enter your Google Client ID first.', 'warning');
+        return;
+      }
+      try {
+        await authenticateGDrive(clientId);
+        showToast('Google Drive connected successfully! 🎉', 'success');
+        setDriveConnected(true);
+      } catch (e: any) {
+        showToast('Connection failed: ' + e.message, 'error');
+        setDriveConnected(false);
+      }
+    }
+  };
+
+  // --- Cloud Synchronization test ---
+  const handleTestCloudSync = async () => {
+    playSound(800, 100);
+    vibrateDevice([40]);
+    const url = config.supabaseUrl?.trim();
+    const key = config.supabaseKey?.trim();
+
+    if (!url || !key) {
+      showToast('Please enter both Supabase URL and publishable key to test.', 'warning');
+      return;
+    }
+
+    setSyncTesting(true);
+    try {
+      const { syncService } = await import('../../services/sync');
+      const result = await syncService.testConnection(url, key);
+      if (result.success) {
+        showToast('Supabase connection successful! 🎉', 'success');
+      } else {
+        showToast('Connection failed: ' + result.message, 'error');
+      }
+    } catch (err: any) {
+      showToast('Test failed: ' + err.message, 'error');
+    } finally {
+      setSyncTesting(false);
+    }
+  };
+
+  const handleCloudSignIn = async () => {
+    const email = config.supabaseEmail?.trim() || '';
+    try {
+      const { authService } = await import('../../services/auth');
+      await authService.loginWithCloudCredentials(email, supabasePassword);
+      setSupabasePassword('');
+      showToast('Cloud staff session active on this device', 'success');
+      const { syncService } = await import('../../services/sync');
+      await syncService.connect();
+    } catch (err: any) {
+      console.error('Cloud staff sign in failed:', err);
+      showToast(err.message || 'Cloud staff sign in failed', 'error');
+    }
+  };
+
+  const handleCloudSignOut = async () => {
+    try {
+      await signOutCloudStaff();
+      showToast('Cloud staff session signed out', 'info');
+    } catch (err: any) {
+      showToast('Cloud sign out failed: ' + err.message, 'error');
+    }
+  };
+
+  // --- Save Configurations ---
+  const handleSave = async () => {
+    playSound(800, 100);
+    vibrateDevice([50, 30]);
+
+    const name = config.restaurantName?.trim();
+    const upiId = config.upiId?.trim();
+    const currencySymbol = safeCurrencySymbol(config.currencySymbol, '₹');
+    const currentStaff = authService.getCurrentStaff();
+
+    if (!name) {
+      showToast('Restaurant name is required', 'warning');
+      return;
+    }
+    if (!upiId) {
+      showToast('UPI ID is required for checkout QR generation', 'warning');
+      return;
+    }
+    try {
+      // Save all field values
+      for (const k of CONFIG_KEYS) {
+        if (config[k] !== undefined) {
+          await setSetting(k, k === 'currencySymbol' ? currencySymbol : String(config[k]));
+        }
+      }
+
+      // Update cached variables
+      localStorage.setItem('app_currency_symbol', currencySymbol);
+      localStorage.setItem('app_currency_code', config.currencyCode || 'INR');
+      localStorage.setItem('app_tax_type', config.taxType || 'GST');
+      localStorage.setItem('app_tax_label', config.taxLabel || 'GST');
+
+      // Theme toggle
+      const savedTheme = config.app_theme || 'system';
+      localStorage.setItem('app_theme', savedTheme);
+      document.documentElement.setAttribute('data-theme', savedTheme);
+      window.dispatchEvent(new CustomEvent('theme-changed', { detail: { theme: savedTheme } }));
+
+      const logo = document.getElementById('app-logo')?.querySelector('span:last-child');
+      if (logo) logo.textContent = config.restaurantName;
+
+      showToast('Settings saved successfully! 🎨', 'success');
+
+      // Hot-reconnect cloud sync syncService
+      try {
+        const { syncService } = await import('../../services/sync');
+        await syncService.connect();
+      } catch (syncErr) {
+        console.error('Sync hot-reconnect error:', syncErr);
+      }
+    } catch (err: any) {
+      showToast('Save failed: ' + err.message, 'error');
+    }
+  };
+
+  // --- File backup helpers ---
+  const handleExportJSON = async () => {
+    playSound(800, 80);
+    try {
+      await exportAllData();
+      await logDataExported();
+      showToast('Full JSON backup downloaded!', 'success');
+    } catch (e: any) {
+      showToast('Export failed: ' + e.message, 'error');
+    }
+  };
+
+  const handleExportCSV = async () => {
+    playSound(800, 80);
+    try {
+      await exportOrdersCSV(30);
+      showToast('Orders CSV downloaded!', 'success');
+    } catch (e: any) {
+      showToast('CSV export failed: ' + e.message, 'error');
+    }
+  };
+
+  const handleImportRestore = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!confirm('This will restore and merge backup data into IndexedDB. Continue?')) {
+      e.target.value = '';
+      return;
+    }
+    try {
+      const text = await file.text();
+      const result = await importData(text);
+      if (result.success) {
+        const counts = Object.entries(result.counts)
+          .filter(([, v]) => Number(v) > 0)
+          .map(([k, v]) => `${k}: ${v}`)
+          .join(', ');
+        showToast(`Restored successfully! ${counts}`, 'success', 5000);
+        loadConfig();
+      }
+    } catch (err: any) {
+      showToast('Import failed: ' + err.message, 'error');
+    }
+    e.target.value = '';
+  };
+
+  // Mono-spaced formatted receipt builder for Thermal preview
+  const thermalPreviewContent = useMemo(() => {
+    if (loading) return '';
+    const pw = config.printerWidth || '58';
+    const cols = pw === '58' ? 32 : pw === '76' ? 42 : pw === '80' ? 48 : 32;
+    const divider = (ch: string) => ch.repeat(cols);
+
+    const padRow = (left: string, mid: string, right: string) => {
+      const l = left || '';
+      const m = mid || '';
+      const r = right || '';
+      const usedLen = l.length + m.length + r.length;
+      const totalSpaces = Math.max(cols - usedLen, 2);
+      const leftPad = Math.floor(totalSpaces / 2);
+      const rightPad = totalSpaces - leftPad;
+      return `${l}${' '.repeat(leftPad)}${m}${' '.repeat(rightPad)}${r}`;
+    };
+
+    const lines: string[] = [];
+    const showLogo = config.showLogoOnReceipt === 'true' || config.showLogoOnReceipt === true;
+    if (showLogo) {
+      lines.push(config.restaurantName || BRAND.name);
+      if (config.restaurantTagline) lines.push(config.restaurantTagline);
+    }
+    if (config.showAddressOnReceipt === 'true' && config.restaurantAddress) {
+      lines.push(config.restaurantAddress);
+    }
+    if (config.showPhoneOnReceipt === 'true' && config.restaurantPhone) {
+      lines.push(`Ph: ${config.restaurantPhone}`);
+    }
+    if (config.showGstinOnReceipt === 'true' && config.gstin) {
+      lines.push(`GSTIN: ${config.gstin}`);
+    }
+    if (config.showFssaiOnReceipt === 'true' && config.fssaiNumber) {
+      lines.push(`FSSAI: ${config.fssaiNumber}`);
+    }
+
+    lines.push(divider('='));
+    lines.push(`Order: #${BRAND.orderPrefix}-0042   Table: 5`);
+    lines.push(`Date: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`);
+    lines.push(divider('-'));
+
+    lines.push(padRow('Item', 'Qty', 'Amt'));
+    lines.push(divider('-'));
+    // Sample lines. Real items from the shop's board, so the preview shows
+    // the owner what their own receipt looks like.
+    lines.push(padRow('Orange Juice (Large)', 'x2', `${config.currencySymbol}60`));
+    lines.push(padRow('Oreo Shake (XL)', 'x1', `${config.currencySymbol}100`));
+    lines.push(padRow('Virgin Mojito (Large)', 'x2', `${config.currencySymbol}100`));
+    lines.push(divider('-'));
+
+    lines.push(padRow('Subtotal', '', `${config.currencySymbol}260`));
+    lines.push(padRow(`${config.taxLabel} (5%)`, '', `${config.currencySymbol}13`));
+    lines.push(divider('='));
+    lines.push(padRow('TOTAL', '', `${config.currencySymbol}273`));
+    lines.push(divider('='));
+
+    if (config.showNotesOnReceipt === 'true') {
+      lines.push(`Note: Extra spicy, no onion`);
+      lines.push(divider('-'));
+    }
+    if (config.showFooterOnReceipt === 'true' && config.receiptFooter) {
+      lines.push(config.receiptFooter);
+    }
+
+    return lines.join('\n');
+  }, [config, loading]);
+
+  // Dynamic A4 iframe preview renderer
+  useEffect(() => {
+    if (activePreviewTab === 'invoice' && !loading) {
+      const dummyOrder = {
+        orderNumber: `${BRAND.orderPrefix}-20260527-0042`,
+        createdAt: new Date().toISOString(),
+        type: 'dine_in',
+        paymentStatus: 'paid',
+        paymentMethod: 'upi',
+        customerName: 'Aria Sen',
+        customerPhone: '9876543210',
+        tableId: '5',
+        subtotal: 260.00,
+        tax: 13.00,
+        total: 273.00,
+        items: JSON.stringify([
+          { name: 'Orange Juice (Large)', qty: 2, price: 30 },
+          { name: 'Oreo Shake (XL)', qty: 1, price: 100 },
+          { name: 'Virgin Mojito (Large)', qty: 2, price: 50 }
+        ])
+      };
+
+      const dummyQr = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="white"/><rect x="10" y="10" width="30" height="30" fill="black"/><rect x="15" y="15" width="20" height="20" fill="white"/><rect x="60" y="10" width="30" height="30" fill="black"/><rect x="65" y="15" width="20" height="20" fill="white"/><rect x="10" y="60" width="30" height="30" fill="black"/><rect x="15" y="65" width="20" height="20" fill="white"/><rect x="45" y="45" width="10" height="10" fill="black"/><rect x="60" y="60" width="10" height="10" fill="black"/><rect x="75" y="75" width="15" height="15" fill="black"/></svg>';
+
+      const invoiceSettings = {
+        restaurantName: config.restaurantName || BRAND.name,
+        restaurantTagline: config.restaurantTagline || BRAND.tagline,
+        restaurantAddress: config.restaurantAddress || addressLine(),
+        restaurantPhone: config.restaurantPhone || '+91 98765 43210',
+        restaurantEmail: config.restaurantEmail || '',
+        restaurantWebsite: config.restaurantWebsite || '',
+        gstin: config.gstin,
+        fssaiNumber: config.fssaiNumber,
+        receiptFooter: config.receiptFooter || 'Thank you! Visit again!',
+        showAddressOnReceipt: config.showAddressOnReceipt === 'true' || config.showAddressOnReceipt === true ? 'true' : 'false',
+        showPhoneOnReceipt: config.showPhoneOnReceipt === 'true' || config.showPhoneOnReceipt === true ? 'true' : 'false',
+        showGstinOnReceipt: config.showGstinOnReceipt === 'true' || config.showGstinOnReceipt === true ? 'true' : 'false',
+        showFssaiOnReceipt: config.showFssaiOnReceipt === 'true' || config.showFssaiOnReceipt === true ? 'true' : 'false',
+        showFooterOnReceipt: config.showFooterOnReceipt === 'true' || config.showFooterOnReceipt === true ? 'true' : 'false',
+        gstPercent: config.gstPercent || '5',
+        invoiceTemplate: config.invoiceTemplate,
+        invoicePrimaryColor: config.invoicePrimaryColor,
+        invoiceFontFamily: config.invoiceFontFamily,
+        invoiceLogoUrl: config.invoiceLogoUrl,
+        invoiceTitle: config.invoiceTitle,
+        invoiceTerms: config.invoiceTerms,
+        invoiceShowSignature: config.invoiceShowSignature === 'true' || config.invoiceShowSignature === true ? 'true' : 'false',
+        invoiceSignatureText: config.invoiceSignatureText,
+        invoiceShowGrid: config.invoiceShowGrid === 'true' || config.invoiceShowGrid === true ? 'true' : 'false',
+        invoiceShowWatermark: config.invoiceShowWatermark === 'true' || config.invoiceShowWatermark === true ? 'true' : 'false',
+        invoiceShowUpiQr: config.invoiceShowUpiQr === 'true' || config.invoiceShowUpiQr === true ? 'true' : 'false',
+        upiId: config.upiId || '',
+        currencySymbol: config.currencySymbol,
+        taxLabel: config.taxLabel
+      };
+
+      import('../../services/invoiceGenerator').then(({ InvoiceGenerator }) => {
+        const html = InvoiceGenerator.generateInvoiceHTML(dummyOrder, invoiceSettings, dummyQr);
+        setInvoiceHtml(html.replace("window.location.search.includes('preview=true')", 'true'));
+      }).catch(err => {
+        console.error('Invoice preview compilation error:', err);
+      });
+    }
+  }, [config, activePreviewTab, loading]);
+
+  const handleTabSelect = (tab: any) => {
+    playSound(700, 60);
+    setSettingsTab(tab);
+    if (tab === 'invoice') {
+      setActivePreviewTab('invoice');
+    } else if (tab === 'printer') {
+      setActivePreviewTab('thermal');
+    }
+  };
+
+  const currentStaff = authService.getCurrentStaff();
+  const isOwner = currentStaff?.role === 'owner';
+
+  if (loading) {
+    return (
+      <div className="settings-container" style={{ padding: '24px' }}>
+        <div className="skeleton-card" style={{ height: '40px', width: '220px', borderRadius: '8px', marginBottom: '24px' }}></div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+          <div className="card skeleton-card" style={{ height: '450px', borderRadius: '12px' }}></div>
+          <div className="card skeleton-card" style={{ height: '450px', borderRadius: '12px' }}></div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="settings-container" style={{
+      padding: '24px',
+      maxWidth: '1200px',
+      margin: '0 auto',
+      display: 'grid',
+      gridTemplateColumns: '1.2fr 0.8fr',
+      gap: '24px',
+      alignItems: 'start'
+    }}>
+      <style>{`
+        .settings-sidebar-btn {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 10px 14px;
+          background: transparent;
+          border: 1px solid transparent;
+          border-radius: 8px;
+          color: var(--text-secondary);
+          font-size: var(--text-xs);
+          font-weight: 700;
+          text-align: left;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .settings-sidebar-btn span {
+          font-size: 18px;
+        }
+        .settings-sidebar-btn:hover {
+          background: var(--bg-card-hover);
+          color: var(--text-primary);
+        }
+        .settings-sidebar-btn.active {
+          background: rgba(var(--color-primary-rgb), 0.08);
+          border-color: rgba(var(--color-primary-rgb), 0.2);
+          color: var(--color-primary-on-surface);
+        }
+      `}</style>
+
+      {/* LEFT COLUMN: Settings forms inside segmented tabs */}
+      <div style={{ display: 'flex', gap: '20px' }}>
+        
+        {/* Left vertical settings sidebar */}
+        <div style={{
+          width: '180px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '6px',
+          flexShrink: 0,
+          background: 'var(--bg-primary)',
+          padding: '12px 8px',
+          borderRadius: 'var(--radius-md)',
+          border: '1px solid var(--border-glass)'
+        }}>
+          <button className={`settings-sidebar-btn ${settingsTab === 'profile' ? 'active' : ''}`} onClick={() => handleTabSelect('profile')}>
+            <span aria-hidden="true" className="material-symbols-rounded">storefront</span>Store Details
+          </button>
+          <button className={`settings-sidebar-btn ${settingsTab === 'payments' ? 'active' : ''}`} onClick={() => handleTabSelect('payments')}>
+            <span aria-hidden="true" className="material-symbols-rounded">account_balance_wallet</span>Payments & Tax
+          </button>
+          <button className={`settings-sidebar-btn ${settingsTab === 'printer' ? 'active' : ''}`} onClick={() => handleTabSelect('printer')}>
+            <span aria-hidden="true" className="material-symbols-rounded">print</span>Printer Roll
+          </button>
+          <button className={`settings-sidebar-btn ${settingsTab === 'invoice' ? 'active' : ''}`} onClick={() => handleTabSelect('invoice')}>
+            <span aria-hidden="true" className="material-symbols-rounded">description</span>A4 Designer
+          </button>
+          <button className={`settings-sidebar-btn ${settingsTab === 'cloud' ? 'active' : ''}`} onClick={() => handleTabSelect('cloud')}>
+            <span aria-hidden="true" className="material-symbols-rounded">cloud_sync</span>Cloud & Drive
+          </button>
+          <button className={`settings-sidebar-btn ${settingsTab === 'security' ? 'active' : ''}`} onClick={() => handleTabSelect('security')}>
+            <span aria-hidden="true" className="material-symbols-rounded">security</span>Lock & Backup
+          </button>
+          <button className={`settings-sidebar-btn ${settingsTab === 'notifications' ? 'active' : ''}`} onClick={() => handleTabSelect('notifications')}>
+            <span aria-hidden="true" className="material-symbols-rounded">notifications_active</span>Order Alerts
+          </button>
+        </div>
+
+        {/* Tab configuration viewport */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          
+          {/* PROFILE CONFIG */}
+          {settingsTab === 'profile' && (
+            <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+              <h3 className="settings-card-heading" style={{ margin: '0 0 16px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
+                <span aria-hidden="true" className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>storefront</span>
+                Restaurant Profile
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <div className="input-group">
+                    <label>Store Name</label>
+                    <input type="text" className="input" value={config.restaurantName} onChange={(e) => handleConfigChange('restaurantName', e.target.value)} placeholder={`e.g. ${BRAND.name}`} />
+                  </div>
+                  <div className="input-group">
+                    <label>Tagline / Cuisine</label>
+                    <input type="text" className="input" value={config.restaurantTagline} onChange={(e) => handleConfigChange('restaurantTagline', e.target.value)} placeholder={`e.g. ${BRAND.tagline}`} />
+                  </div>
+                </div>
+
+                <div className="input-group">
+                  <label>Store Address</label>
+                  <input type="text" className="input" value={config.restaurantAddress} onChange={(e) => handleConfigChange('restaurantAddress', e.target.value)} placeholder="e.g. Kumhrar, Sandalpur Road, Patna" />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <div className="input-group">
+                    <label>Store Phone</label>
+                    <input type="tel" className="input" value={config.restaurantPhone} onChange={(e) => handleConfigChange('restaurantPhone', e.target.value)} placeholder="+91 XXXXXXXXXX" />
+                  </div>
+                  <div className="input-group">
+                    <label>Store Email</label>
+                    <input type="email" className="input" value={config.restaurantEmail} onChange={(e) => handleConfigChange('restaurantEmail', e.target.value)} placeholder="hello@yourshop.com" />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <div className="input-group">
+                    <label>Website URL</label>
+                    <input type="url" className="input" value={config.restaurantWebsite} onChange={(e) => handleConfigChange('restaurantWebsite', e.target.value)} placeholder="yourshop.com" />
+                  </div>
+                  <div className="input-group">
+                    <label>Operating Hours</label>
+                    <input type="text" className="input" value={config.operatingHours} onChange={(e) => handleConfigChange('operatingHours', e.target.value)} placeholder="11:00 AM - 11:00 PM" />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <div className="input-group">
+                    <label>GSTIN / Tax ID</label>
+                    <input type="text" className="input" value={config.gstin} onChange={(e) => handleConfigChange('gstin', e.target.value)} placeholder="GSTIN code" />
+                  </div>
+                  <div className="input-group">
+                    <label>FSSAI License No.</label>
+                    <input type="text" className="input" value={config.fssaiNumber} onChange={(e) => handleConfigChange('fssaiNumber', e.target.value)} placeholder="FSSAI number" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* PAYMENTS & TAXES */}
+          {settingsTab === 'payments' && (
+            <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+              <h3 className="settings-card-heading" style={{ margin: '0 0 16px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
+                <span aria-hidden="true" className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>account_balance_wallet</span>
+                Payments & Tax Setup
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '16px' }}>
+                  <div className="input-group">
+                    <label>UPI ID (VPA) for Scanning</label>
+                    <input type="text" className="input" style={{ borderColor: 'rgba(var(--color-primary-rgb), 0.3)' }} value={config.upiId} onChange={(e) => handleConfigChange('upiId', e.target.value)} placeholder="merchant@upi" />
+                  </div>
+                  <div className="input-group">
+                    <label>Merchant Name</label>
+                    <input type="text" className="input" value={config.upiName} onChange={(e) => handleConfigChange('upiName', e.target.value)} placeholder="Store Name" />
+                  </div>
+                </div>
+                <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-warning)', marginTop: '-8px', fontWeight: 600 }}>
+                  ⚠️ Critical: Verification of UPI VPA is required. Customers scan and pay directly to this address.
+                </p>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <div className="input-group">
+                    <label>Tax Percentage Rate (%)</label>
+                    <input type="number" className="input" value={config.gstPercent} onChange={(e) => handleConfigChange('gstPercent', e.target.value)} placeholder="5" min="0" step="0.5" />
+                  </div>
+                  <div className="input-group">
+                    <label>Order Number Prefix</label>
+                    <input type="text" className="input" value={config.orderNumberPrefix} onChange={(e) => handleConfigChange('orderNumberPrefix', e.target.value)} placeholder="TT" maxLength="4" />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <div className="input-group">
+                    <label>Currency Code</label>
+                    <select className="input" value={config.currencyCode} onChange={(e) => handleConfigChange('currencyCode', e.target.value)} style={{ fontWeight: 700 }}>
+                      <option value="INR">INR (Indian Rupee)</option>
+                      <option value="USD">USD (US Dollar)</option>
+                      <option value="EUR">EUR (Euro)</option>
+                      <option value="GBP">GBP (British Pound)</option>
+                      <option value="AUD">AUD (Australian Dollar)</option>
+                      <option value="CAD">CAD (Canadian Dollar)</option>
+                    </select>
+                  </div>
+                  <div className="input-group">
+                    <label>Currency Symbol</label>
+                    <input type="text" className="input" value={config.currencySymbol} onChange={(e) => handleConfigChange('currencySymbol', e.target.value)} placeholder="₹" style={{ fontWeight: 700 }} />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <div className="input-group">
+                    <label>Tax System Type</label>
+                    <select className="input" value={config.taxType} onChange={(e) => handleConfigChange('taxType', e.target.value)} style={{ fontWeight: 700 }}>
+                      <option value="GST">GST (Goods & Services Tax)</option>
+                      <option value="VAT">VAT (Value Added Tax)</option>
+                      <option value="Sales Tax">Sales Tax</option>
+                      <option value="None">None (Tax-Free)</option>
+                    </select>
+                  </div>
+                  <div className="input-group">
+                    <label>Tax Label on Bill</label>
+                    <input type="text" className="input" value={config.taxLabel} onChange={(e) => handleConfigChange('taxLabel', e.target.value)} placeholder="GST or VAT" style={{ fontWeight: 700 }} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* PRINTER ROLL SETTINGS */}
+          {settingsTab === 'printer' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                <h3 className="settings-card-heading" style={{ margin: '0 0 16px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
+                  <span aria-hidden="true" className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>print</span>
+                  Bluetooth Printer setup
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-primary)', padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
+                    <div>
+                      <div style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--text-primary)' }}>Web Bluetooth API Support</div>
+                      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                        {isPrinterSupported ? 'Ready for connection' : '⚠️ Use Chrome on Android / Windows'}
+                      </div>
+                    </div>
+                    <span className={`badge ${isPrinterSupported ? 'badge-success' : 'badge-danger'}`} style={{ fontSize: 'var(--text-xs)', fontWeight: 800 }}>
+                      {isPrinterSupported ? 'OK' : 'ERR'}
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-primary)', padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
+                    <div>
+                      <div style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--text-primary)' }}>Connection Status</div>
+                      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                        {printerConnected ? `Connected to ${printerService.device?.name || 'Device'}` : 'Offline'}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span className={`status-dot ${printerConnected ? 'online' : 'offline'}`} style={{ width: '8px', height: '8px' }}></span>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '12px' }}>
+                    <button onClick={handleTogglePrinter} disabled={!isPrinterSupported} className={`btn ${printerConnected ? 'btn-danger' : 'btn-primary'}`} style={{ flex: 1, minHeight: '38px', fontSize: 'var(--text-xs)', fontWeight: 700 }}>
+                      {printerConnected ? 'Disconnect' : 'Connect BLE'}
+                    </button>
+                    <button onClick={handlePrintTest} disabled={!printerConnected} className="btn btn-secondary" style={{ flex: 1, minHeight: '38px', fontSize: 'var(--text-xs)', fontWeight: 700 }}>
+                      Print Test
+                    </button>
+                  </div>
+
+                  {permissionError && (
+                    <div style={{ marginTop: '12px', padding: '12px', borderRadius: '8px', background: 'rgba(var(--color-danger-rgb), 0.08)', border: '1px solid rgba(var(--color-danger-rgb), 0.2)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-danger)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span aria-hidden="true" className="material-symbols-rounded" style={{ fontSize: '14px' }}>error</span>
+                        Bluetooth Permission Blocked
+                      </div>
+                      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+                        To connect, please go to your phone/tablet's <strong>App Settings</strong> and enable the <strong>Nearby Devices</strong> (or Bluetooth) permission for this app.
+                      </div>
+                      {typeof window !== 'undefined' && (window as any).Capacitor && (window as any).Capacitor.isNativePlatform() && (
+                        <button 
+                          onClick={async () => {
+                            playSound(700, 60);
+                            await printerService.openAppSettings();
+                          }}
+                          className="btn btn-secondary btn-sm" 
+                          style={{ alignSelf: 'flex-start', minHeight: '30px', fontSize: 'var(--text-xs)', padding: '4px 12px', border: '1px solid var(--border-glass)' }}
+                        >
+                          Open App Settings
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Advanced Print Roll Settings */}
+              <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                <h3 className="settings-card-heading" style={{ margin: '0 0 16px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
+                  <span aria-hidden="true" className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>tune</span>
+                  Thermal Layout & Receipt content
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '16px' }}>
+                    <div className="input-group">
+                      <label>Paper Width Roll</label>
+                      <select className="input" value={config.printerWidth} onChange={(e) => handleConfigChange('printerWidth', e.target.value)} style={{ fontWeight: 700 }}>
+                        <option value="58">58mm (32 chars roll)</option>
+                        <option value="76">76mm (42 chars roll)</option>
+                        <option value="80">80mm (48 chars roll)</option>
+                      </select>
+                    </div>
+                    <div className="input-group">
+                      <label>Print Copies</label>
+                      <input type="number" className="input" min="1" max="5" value={config.printCopies} onChange={(e) => handleConfigChange('printCopies', e.target.value)} />
+                    </div>
+                  </div>
+
+                  <div className="input-group">
+                    <label>Print Density / Font Thickness</label>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      {['light', 'normal', 'bold'].map(d => {
+                        const active = config.printDensity === d;
+                        return (
+                          <button
+                            key={d}
+                            onClick={() => handleConfigChange('printDensity', d)}
+                            className={`btn`}
+                            style={{
+                              flex: 1, minHeight: '34px', fontSize: 'var(--text-xs)', fontWeight: active ? 800 : 500,
+                              borderRadius: 'var(--radius-md)', cursor: 'pointer',
+                              border: `1.5px solid ${active ? 'var(--color-primary)' : 'var(--border-glass)'}`,
+                              background: active ? 'var(--color-primary-glow)' : 'var(--bg-primary)',
+                              color: active ? 'var(--color-primary)' : 'var(--text-secondary)',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            {d.toUpperCase()}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ marginBottom: '10px', display: 'block', fontSize: 'var(--text-xs)', fontWeight: 700 }}>Include in Receipt</label>
+                    <div style={{ background: 'var(--bg-primary)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-glass)', padding: '4px 16px' }}>
+                      {[
+                        { id: 'showLogoOnReceipt', label: 'Show Brand Logo / Header Title' },
+                        { id: 'showAddressOnReceipt', label: 'Print Address Details' },
+                        { id: 'showPhoneOnReceipt', label: 'Print Contact Phone Number' },
+                        { id: 'showGstinOnReceipt', label: 'Print Store GSTIN Number' },
+                        { id: 'showFssaiOnReceipt', label: 'Print Store FSSAI License' },
+                        { id: 'showNotesOnReceipt', label: 'Print Customer Cooking Notes' },
+                        { id: 'showFooterOnReceipt', label: 'Print Receipt Footer message' },
+                        { id: 'autoPrintOnConfirm', label: 'Auto-print instantly on payment confirm' }
+                      ].map(toggle => (
+                        <div key={toggle.id} className="settings-toggle-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                          <span style={{ fontSize: 'var(--text-xs)', fontWeight: 500 }}>{toggle.label}</span>
+                          <label className="settings-toggle-switch" style={{ position: 'relative', display: 'inline-block', width: '38px', height: '22px' }}>
+                            <input
+                              type="checkbox"
+                              checked={config[toggle.id] === 'true' || config[toggle.id] === true}
+                              onChange={(e) => handleConfigChange(toggle.id, e.target.checked ? 'true' : 'false')}
+                              style={{ opacity: 0, width: 0, height: 0 }}
+                            />
+                            <span className="settings-toggle-track" style={{ position: 'absolute', cursor: 'pointer', inset: 0, background: config[toggle.id] === 'true' || config[toggle.id] === true ? 'var(--color-primary)' : 'var(--border-active)', borderRadius: '34px', transition: '0.2s' }}></span>
+                            <span className="settings-toggle-thumb" style={{ position: 'absolute', height: '16px', width: '16px', left: config[toggle.id] === 'true' || config[toggle.id] === true ? '19px' : '3px', bottom: '3px', background: 'white', borderRadius: '50%', transition: '0.2s' }}></span>
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* INVOICE A4 DESIGNER */}
+          {settingsTab === 'invoice' && (
+            <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+              <h3 className="settings-card-heading" style={{ margin: '0 0 16px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
+                <span aria-hidden="true" className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>palette</span>
+                Bill & A4 Invoice Designer
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <div className="input-group">
+                    <label>Invoice Theme Style</label>
+                    <select className="input" value={config.invoiceTemplate} onChange={(e) => handleConfigChange('invoiceTemplate', e.target.value)} style={{ fontWeight: 700 }}>
+                      <option value="minimalist">Minimalist Modern (Airy & Clean)</option>
+                      <option value="luxury">Luxury Gold (Elegant Serif Titles)</option>
+                      <option value="executive">Executive Navy (Corporate Solid Grid)</option>
+                      <option value="chic">Chic Rose (Cafe Peach Aesthetic)</option>
+                    </select>
+                  </div>
+                  <div className="input-group">
+                    <label>Font Family</label>
+                    <select className="input" value={config.invoiceFontFamily} onChange={(e) => handleConfigChange('invoiceFontFamily', e.target.value)} style={{ fontWeight: 700 }}>
+                      <option value="sans-serif">Plus Jakarta Sans / Inter (Modern)</option>
+                      <option value="serif">Georgia / Garamond (Classic Serif)</option>
+                      <option value="slab">Roboto Slab (Solid Executive)</option>
+                      <option value="monospace">JetBrains Mono (Retro Grid)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '16px', alignItems: 'flex-end' }}>
+                  <div className="input-group">
+                    <label>Invoice Title Header</label>
+                    <input type="text" className="input" value={config.invoiceTitle} onChange={(e) => handleConfigChange('invoiceTitle', e.target.value)} placeholder="TAX INVOICE" />
+                  </div>
+                  <div className="input-group">
+                    <label>Theme Brand Color</label>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <input
+                        type="color"
+                        value={config.invoicePrimaryColor}
+                        onChange={(e) => handleConfigChange('invoicePrimaryColor', e.target.value)}
+                        style={{ border: '1px solid var(--border-glass)', background: 'none', width: '38px', height: '38px', borderRadius: '8px', cursor: 'pointer', padding: 0 }}
+                      />
+                      <input
+                        type="text"
+                        className="input"
+                        value={config.invoicePrimaryColor}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (/^#[0-9A-F]{0,6}$/i.test(val)) handleConfigChange('invoicePrimaryColor', val);
+                        }}
+                        style={{ maxWidth: '80px', textTransform: 'uppercase', textAlign: 'center', fontSize: 'var(--text-xs)', fontWeight: 700 }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="input-group">
+                  <label>Logo URL (Direct HTTP Link)</label>
+                  <input type="url" className="input" value={config.invoiceLogoUrl} onChange={(e) => handleConfigChange('invoiceLogoUrl', e.target.value)} placeholder="https://site.com/logo.png" />
+                </div>
+
+                <div className="input-group">
+                  <label>Invoice Terms & Conditions</label>
+                  <textarea className="input" value={config.invoiceTerms} onChange={(e) => handleConfigChange('invoiceTerms', e.target.value)} style={{ minHeight: '60px', fontFamily: 'var(--font-sans)', fontSize: 'var(--text-xs)' }} />
+                </div>
+
+                <div className="input-group" style={{ maxWidth: '320px' }}>
+                  <label>Signature Text label</label>
+                  <input type="text" className="input" value={config.invoiceSignatureText} onChange={(e) => handleConfigChange('invoiceSignatureText', e.target.value)} />
+                </div>
+
+                <div>
+                  <label style={{ marginBottom: '10px', display: 'block', fontSize: 'var(--text-xs)', fontWeight: 700 }}>Invoice Layout elements</label>
+                  <div style={{ background: 'var(--bg-primary)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-glass)', padding: '4px 16px' }}>
+                    {[
+                      { id: 'invoiceShowUpiQr', label: 'Show dynamic scan-to-pay UPI QR block' },
+                      { id: 'invoiceShowGrid', label: 'Draw item grid gridlines' },
+                      { id: 'invoiceShowSignature', label: 'Draw signature authorization line' },
+                      { id: 'invoiceShowWatermark', label: 'Draw subtle branding background watermark' }
+                    ].map(toggle => (
+                      <div key={toggle.id} className="settings-toggle-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                        <span style={{ fontSize: 'var(--text-xs)', fontWeight: 500 }}>{toggle.label}</span>
+                        <label className="settings-toggle-switch" style={{ position: 'relative', display: 'inline-block', width: '38px', height: '22px' }}>
+                          <input
+                            type="checkbox"
+                            checked={config[toggle.id] === 'true' || config[toggle.id] === true}
+                            onChange={(e) => handleConfigChange(toggle.id, e.target.checked ? 'true' : 'false')}
+                            style={{ opacity: 0, width: 0, height: 0 }}
+                          />
+                          <span className="settings-toggle-track" style={{ position: 'absolute', cursor: 'pointer', inset: 0, background: config[toggle.id] === 'true' || config[toggle.id] === true ? 'var(--color-primary)' : 'var(--border-active)', borderRadius: '34px', transition: '0.2s' }}></span>
+                          <span className="settings-toggle-thumb" style={{ position: 'absolute', height: '16px', width: '16px', left: config[toggle.id] === 'true' || config[toggle.id] === true ? '19px' : '3px', bottom: '3px', background: 'white', borderRadius: '50%', transition: '0.2s' }}></span>
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* CLOUD SYNC & DRIVE */}
+          {settingsTab === 'cloud' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              
+              {/* Supabase Sync */}
+              <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                <h3 className="settings-card-heading" style={{ margin: '0 0 16px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
+                  <span aria-hidden="true" className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>cloud_sync</span>
+                  Supabase DB Sync Integration
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div className="input-group">
+                    <label>Supabase project URL</label>
+                    <input type="url" className="input" value={config.supabaseUrl} onChange={(e) => handleConfigChange('supabaseUrl', e.target.value)} placeholder="https://project.supabase.co" />
+                  </div>
+                  <div className="input-group">
+                    <label>Publishable client key</label>
+                    <input type="password" className="input" value={config.supabaseKey} onChange={(e) => handleConfigChange('supabaseKey', e.target.value)} placeholder="Publishable key" />
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    <div className="input-group">
+                      <label>Cloud staff email</label>
+                      <input type="email" className="input" value={config.supabaseEmail} onChange={(e) => handleConfigChange('supabaseEmail', e.target.value)} placeholder="staff@yourshop.com" />
+                    </div>
+                    <div className="input-group">
+                      <label>Cloud staff password</label>
+                      <input type="password" className="input" value={supabasePassword} onChange={(e) => setSupabasePassword(e.target.value)} placeholder="Password" />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
+                    <button onClick={handleTestCloudSync} disabled={syncTesting} className="btn btn-secondary btn-sm" style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px', height: '34px' }}>
+                      <span aria-hidden="true" className={`material-symbols-rounded ${syncTesting ? 'animate-spin' : ''}`} style={{ fontSize: '16px' }}>sync</span>
+                      Test Conn
+                    </button>
+                    <button onClick={handleCloudSignIn} className="btn btn-primary btn-sm" style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px', height: '34px' }}>
+                      <span aria-hidden="true" className="material-symbols-rounded" style={{ fontSize: '16px' }}>login</span>
+                      Sign In Device
+                    </button>
+                    <button onClick={handleCloudSignOut} className="btn btn-secondary btn-sm" style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px', height: '34px' }}>
+                      <span aria-hidden="true" className="material-symbols-rounded" style={{ fontSize: '16px' }}>logout</span>
+                      Sign Out
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Google Drive */}
+              <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                <h3 className="settings-card-heading" style={{ margin: '0 0 16px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
+                  <span aria-hidden="true" className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>cloud_upload</span>
+                  Google Drive Report Backups
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div className="input-group">
+                    <label>OAuth 2.0 Client ID</label>
+                    <input type="text" className="input" value={config.googleClientId} onChange={(e) => handleConfigChange('googleClientId', e.target.value)} placeholder="Client ID string" />
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-primary)', padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
+                    <div>
+                      <div style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--text-primary)' }}>OAuth Status</div>
+                      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', marginTop: '2px' }}>{driveConnected ? 'Backup folder active' : 'Drive disconnected'}</div>
+                    </div>
+                    <span style={{ fontSize: 'var(--text-xs)', fontWeight: 800, color: driveConnected ? 'var(--color-success)' : 'var(--text-muted)' }}>
+                      {driveConnected ? 'CONNECTED' : 'OFFLINE'}
+                    </span>
+                  </div>
+
+                  <button onClick={handleToggleDrive} className={`btn ${driveConnected ? 'btn-danger' : 'btn-primary'}`} style={{ minHeight: '36px', fontSize: 'var(--text-xs)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                    <span aria-hidden="true" className="material-symbols-rounded" style={{ fontSize: '16px' }}>backup</span>
+                    {driveConnected ? 'Disconnect' : 'Connect GDrive'}
+                  </button>
+
+                  <div style={{ background: 'var(--bg-primary)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-glass)', padding: '4px 16px' }}>
+                    <div className="settings-toggle-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0' }}>
+                      <span style={{ fontSize: 'var(--text-xs)', fontWeight: 500 }}>Auto-upload report backups</span>
+                      <label className="settings-toggle-switch" style={{ position: 'relative', display: 'inline-block', width: '38px', height: '22px' }}>
+                        <input
+                          type="checkbox"
+                          checked={config.autoUploadToDrive === 'true' || config.autoUploadToDrive === true}
+                          onChange={(e) => handleConfigChange('autoUploadToDrive', e.target.checked ? 'true' : 'false')}
+                          style={{ opacity: 0, width: 0, height: 0 }}
+                        />
+                        <span className="settings-toggle-track" style={{ position: 'absolute', cursor: 'pointer', inset: 0, background: config.autoUploadToDrive === 'true' || config.autoUploadToDrive === true ? 'var(--color-primary)' : 'var(--border-active)', borderRadius: '34px', transition: '0.2s' }}></span>
+                        <span className="settings-toggle-thumb" style={{ position: 'absolute', height: '16px', width: '16px', left: config.autoUploadToDrive === 'true' || config.autoUploadToDrive === true ? '19px' : '3px', bottom: '3px', background: 'white', borderRadius: '50%', transition: '0.2s' }}></span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* SECURITY & DATA BACKUPS */}
+          {settingsTab === 'security' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              
+              {/* Cloud session and automatic lock controls */}
+              <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                <h3 className="settings-card-heading" style={{ margin: '0 0 16px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
+                  <span aria-hidden="true" className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>security</span>
+                  Cloud Session & Automatic Lock
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div style={{ background: 'var(--bg-primary)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-glass)', padding: '4px 16px' }}>
+                    {[
+                      { id: 'autoLockTerminal', label: 'Activate automatic lock during cashier terminal inactivity' }
+                    ].map(toggle => (
+                      <div key={toggle.id} className="settings-toggle-row" style={{ display: 'flex', justifySelf: 'stretch', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                        <span style={{ fontSize: 'var(--text-xs)', fontWeight: 500 }}>{toggle.label}</span>
+                        <label className="settings-toggle-switch" style={{ position: 'relative', display: 'inline-block', width: '38px', height: '22px' }}>
+                          <input
+                            type="checkbox"
+                            checked={config[toggle.id] === 'true' || config[toggle.id] === true}
+                            onChange={(e) => handleConfigChange(toggle.id, e.target.checked ? 'true' : 'false')}
+                            style={{ opacity: 0, width: 0, height: 0 }}
+                          />
+                          <span className="settings-toggle-track" style={{ position: 'absolute', cursor: 'pointer', inset: 0, background: config[toggle.id] === 'true' || config[toggle.id] === true ? 'var(--color-primary)' : 'var(--border-active)', borderRadius: '34px', transition: '0.2s' }}></span>
+                          <span className="settings-toggle-thumb" style={{ position: 'absolute', height: '16px', width: '16px', left: config[toggle.id] === 'true' || config[toggle.id] === true ? '19px' : '3px', bottom: '3px', background: 'white', borderRadius: '50%', transition: '0.2s' }}></span>
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    <div className="input-group" style={{ opacity: config.autoLockTerminal === 'true' || config.autoLockTerminal === true ? 1 : 0.4 }}>
+                      <label>Auto-Lock Inactivity Limit</label>
+                      <select className="input" disabled={config.autoLockTerminal !== 'true' && config.autoLockTerminal !== true} value={config.autoLockTimeout} onChange={(e) => handleConfigChange('autoLockTimeout', e.target.value)} style={{ fontWeight: 700 }}>
+                        <option value="5">5 Minutes</option>
+                        <option value="10">10 Minutes</option>
+                        <option value="15">15 Minutes</option>
+                        <option value="30">30 Minutes</option>
+                      </select>
+                    </div>
+
+                    <div className="input-group">
+                      <label>Active Staff session limit</label>
+                      <select className="input" value={config.sessionDuration} onChange={(e) => handleConfigChange('sessionDuration', e.target.value)} style={{ fontWeight: 700 }}>
+                        <option value="4">4 Hours</option>
+                        <option value="8">8 Hours (Standard)</option>
+                        <option value="12">12 Hours</option>
+                        <option value="24">24 Hours</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Data backups */}
+              <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                <h3 className="settings-card-heading" style={{ margin: '0 0 16px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
+                  <span aria-hidden="true" className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>backup</span>
+                  Database Backups & CSV ledger exports
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
+                    Execute exports of store details as a JSON config file, or backup transaction logs directly.
+                  </p>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <button onClick={handleExportJSON} className="btn btn-secondary btn-sm" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px', height: '36px', fontWeight: 700 }}>
+                      <span aria-hidden="true" className="material-symbols-rounded" style={{ fontSize: '16px' }}>download</span>
+                      JSON Config Backup
+                    </button>
+                    <button onClick={handleExportCSV} className="btn btn-secondary btn-sm" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px', height: '36px', fontWeight: 700 }}>
+                      <span aria-hidden="true" className="material-symbols-rounded" style={{ fontSize: '16px' }}>table_view</span>
+                      CSV Order Logs (30d)
+                    </button>
+                  </div>
+                  <div>
+                    <input ref={importFileInputRef} type="file" accept=".json" onChange={handleImportRestore} style={{ display: 'none' }} />
+                    <button onClick={() => importFileInputRef.current?.click()} className="btn btn-secondary btn-sm" style={{ width: '100%', height: '36px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px', border: '1px solid rgba(var(--color-warning-rgb),0.25)', background: 'rgba(var(--color-warning-rgb),0.04)', color: 'var(--color-warning-on-surface)', fontWeight: 700 }}>
+                      <span aria-hidden="true" className="material-symbols-rounded" style={{ fontSize: '16px' }}>upload</span>
+                      Restore / Upload JSON Backup file
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Theme setting block under Store Details */}
+          {settingsTab === 'profile' && (
+            <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+              <h3 className="settings-card-heading" style={{ margin: '0 0 16px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
+                <span aria-hidden="true" className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>palette</span>
+                Theme Preference
+              </h3>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                {[
+                  { id: 'dark', label: 'Dark Mode', icon: 'dark_mode' },
+                  { id: 'light', label: 'Light Mode', icon: 'light_mode' },
+                  { id: 'system', label: 'System Theme', icon: 'computer' }
+                ].map(theme => {
+                  const active = config.app_theme === theme.id;
+                  return (
+                    <button
+                      key={theme.id}
+                      onClick={() => handleConfigChange('app_theme', theme.id)}
+                      className={`btn`}
+                      style={{
+                        flex: 1, minHeight: '38px', display: 'inline-flex', alignItems: 'center',
+                        justifyContent: 'center', gap: '6px', borderRadius: 'var(--radius-md)',
+                        border: `1.5px solid ${active ? 'var(--color-primary)' : 'var(--border-glass)'}`,
+                        background: active ? 'var(--color-primary-glow)' : 'var(--bg-primary)',
+                        color: active ? 'var(--color-primary)' : 'var(--text-secondary)',
+                        fontWeight: active ? '700' : '500', cursor: 'pointer', transition: 'all 0.2s'
+                      }}
+                    >
+                      <span aria-hidden="true" className="material-symbols-rounded" style={{ fontSize: '16px' }}>{theme.icon}</span>
+                      {theme.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* NOTIFICATIONS & ALERTS */}
+          {settingsTab === 'notifications' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+              {/* Alert Toggle */}
+              <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                <h3 className="settings-card-heading" style={{ margin: '0 0 16px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
+                  <span aria-hidden="true" className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>notifications_active</span>
+                  New Order Alerts
+                </h3>
+                <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', margin: '0 0 16px 0' }}>
+                  Configure how the POS and Kitchen screens alert you when a new order arrives.
+                </p>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+                  {/* Enable toggle */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-glass)' }}>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>Enable order alerts</div>
+                      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: '2px' }}>Play ringtone, vibrate and show notifications for new orders</div>
+                    </div>
+                    <label className="switch-toggle">
+                      <input type="checkbox" checked={alertEnabled} onChange={(e) => { setAlertEnabled(e.target.checked); saveAlertSetting(ORDER_ALERT_SETTINGS.enabled, e.target.checked); }} />
+                      <span className="switch-slider" />
+                    </label>
+                  </div>
+
+                  {/* Ringtone selector */}
+                  <div style={{ padding: '12px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-glass)' }}>
+                    <div style={{ fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--text-primary)', marginBottom: '8px' }}>Alert Ringtone</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                      {RINGTONE_OPTIONS.map((r) => {
+                        const active = alertRingtone === r.id;
+                        return (
+                          <button
+                            key={r.id}
+                            onClick={() => {
+                              setAlertRingtone(r.id);
+                              saveAlertSetting(ORDER_ALERT_SETTINGS.ringtone, r.id);
+                              orderNotificationService.preview(r.id, alertVolume);
+                            }}
+                            style={{
+                              display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 14px',
+                              borderRadius: 'var(--radius-md)', cursor: 'pointer', transition: 'all 0.2s',
+                              fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: active ? 700 : 500,
+                              fontSize: 'var(--text-xs)',
+                              border: `1.5px solid ${active ? 'var(--color-primary)' : 'var(--border-glass)'}`,
+                              background: active ? 'var(--color-primary-glow)' : 'var(--bg-primary)',
+                              color: active ? 'var(--color-primary)' : 'var(--text-secondary)',
+                              boxShadow: active ? '0 0 12px rgba(var(--color-primary-rgb), 0.15)' : 'none'
+                            }}
+                          >
+                            <span aria-hidden="true" className="material-symbols-rounded" style={{ fontSize: '16px' }}>{r.icon}</span>
+                            {r.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <button
+                      onClick={() => orderNotificationService.preview(alertRingtone, alertVolume)}
+                      style={{
+                        marginTop: '10px', display: 'inline-flex', alignItems: 'center', gap: '4px',
+                        padding: '6px 12px', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                        background: 'transparent', border: '1px solid var(--border-glass)',
+                        color: 'var(--text-secondary)', fontSize: 'var(--text-sm)', fontWeight: 600, transition: 'all 0.2s'
+                      }}
+                    >
+                      <span aria-hidden="true" className="material-symbols-rounded" style={{ fontSize: '14px' }}>play_arrow</span>
+                      Preview
+                    </button>
+                  </div>
+
+                  {/* Volume slider */}
+                  <div style={{ padding: '12px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-glass)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <div style={{ fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>Alert Volume</div>
+                      <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-primary)', fontWeight: 700 }}>{alertVolume}%</span>
+                    </div>
+                    <input
+                      type="range" min="10" max="100" step="5" value={alertVolume}
+                      onChange={(e) => { const v = Number(e.target.value); setAlertVolume(v); saveAlertSetting(ORDER_ALERT_SETTINGS.volume, v); }}
+                      style={{ width: '100%', accentColor: 'var(--color-primary)' }}
+                    />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: '4px' }}>
+                      <span>Quiet</span><span>Loud</span>
+                    </div>
+                  </div>
+
+                  {/* Duration slider */}
+                  <div style={{ padding: '12px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-glass)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <div style={{ fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>Alert Duration</div>
+                      <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-primary)', fontWeight: 700 }}>{alertDuration}s</span>
+                    </div>
+                    <input
+                      type="range" min="3" max="15" step="1" value={alertDuration}
+                      onChange={(e) => { const d = Number(e.target.value); setAlertDuration(d); saveAlertSetting(ORDER_ALERT_SETTINGS.duration, d); }}
+                      style={{ width: '100%', accentColor: 'var(--color-primary)' }}
+                    />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: '4px' }}>
+                      <span>3 sec</span><span>15 sec</span>
+                    </div>
+                  </div>
+
+                  {/* System notification toggle */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-glass)' }}>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>System Notifications</div>
+                      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: '2px' }}>
+                        Show a system-level popup notification (works even when app is in background)
+                        {notifPermission !== 'granted' && (
+                          <button
+                            onClick={async () => {
+                              const r = await orderNotificationService.requestNotificationPermission();
+                              setNotifPermission(r);
+                              showToast(r === 'granted' ? 'Notification permission granted!' : 'Permission denied. Enable in browser settings.', r === 'granted' ? 'success' : 'warning');
+                            }}
+                            style={{ marginLeft: '8px', padding: '2px 8px', fontSize: 'var(--text-xs)', fontWeight: 700, borderRadius: '4px', border: '1px solid var(--color-primary)', background: 'var(--color-primary-glow)', color: 'var(--color-primary)', cursor: 'pointer' }}
+                          >
+                            Grant Permission
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <label className="switch-toggle">
+                      <input type="checkbox" checked={alertSystemNotif} onChange={(e) => { setAlertSystemNotif(e.target.checked); saveAlertSetting(ORDER_ALERT_SETTINGS.systemNotif, e.target.checked); }} />
+                      <span className="switch-slider" />
+                    </label>
+                  </div>
+
+                  {/* Vibration toggle */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-glass)' }}>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>Vibration</div>
+                      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: '2px' }}>Vibrate the device when a new order arrives (mobile/tablet only)</div>
+                    </div>
+                    <label className="switch-toggle">
+                      <input type="checkbox" checked={alertVibration} onChange={(e) => { setAlertVibration(e.target.checked); saveAlertSetting(ORDER_ALERT_SETTINGS.vibration, e.target.checked); }} />
+                      <span className="switch-slider" />
+                    </label>
+                  </div>
+
+                  {/* Remote-only filter toggle */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-glass)' }}>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>Alert only for remote orders</div>
+                      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: '2px' }}>Only trigger alerts for QR scan and online orders — skip POS counter orders placed by staff</div>
+                    </div>
+                    <label className="switch-toggle">
+                      <input type="checkbox" checked={alertRemoteOnly} onChange={(e) => { setAlertRemoteOnly(e.target.checked); saveAlertSetting(ORDER_ALERT_SETTINGS.filterRemoteOnly, e.target.checked); }} />
+                      <span className="switch-slider" />
+                    </label>
+                  </div>
+
+                  {/* Test alert button */}
+                  <button
+                    onClick={() => {
+                      orderNotificationService.alertNewOrder({
+                        orderNumber: 'TEST-001',
+                        items: [{ name: 'Test Item', qty: 1 }],
+                        tableNumber: '5',
+                        channel: 'qr',
+                      });
+                      showToast('Test alert triggered!', 'info');
+                    }}
+                    className="btn btn-primary"
+                    style={{
+                      width: '100%', padding: '12px', fontWeight: 700, fontSize: 'var(--text-sm)',
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                      borderRadius: 'var(--radius-md)', border: 'none', cursor: 'pointer',
+                      background: 'var(--color-primary)', color: '#fff',
+                      boxShadow: '0 4px 15px rgba(var(--color-primary-rgb), 0.3)'
+                    }}
+                  >
+                    <span aria-hidden="true" className="material-symbols-rounded" style={{ fontSize: '18px' }}>campaign</span>
+                    Test Full Alert
+                  </button>
+
+                  {/* Stop alert button */}
+                  {orderNotificationService.isPlaying && (
+                    <button
+                      onClick={() => { orderNotificationService.stop(); showToast('Alert stopped', 'info'); }}
+                      className="btn btn-secondary"
+                      style={{
+                        width: '100%', padding: '10px', fontWeight: 700, fontSize: 'var(--text-xs)',
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                        borderRadius: 'var(--radius-md)', border: '1px solid var(--border-glass)', cursor: 'pointer',
+                        background: 'rgba(255,255,255,0.02)', color: 'var(--text-secondary)'
+                      }}
+                    >
+                      <span aria-hidden="true" className="material-symbols-rounded" style={{ fontSize: '16px' }}>stop_circle</span>
+                      Stop Alert
+                    </button>
+                  )}
+                </div>
+              </div>
+
+            </div>
+          )}
+          
+        </div>
+      </div>
+
+      {/* RIGHT COLUMN: Live Document Previews (Receipt or A4 invoice) */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', position: 'sticky', top: '24px' }}>
+        <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '20px 24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column' }}>
+          <h3 className="settings-card-heading" style={{ margin: '0 0 16px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
+            <span aria-hidden="true" className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>preview</span>
+            Live Document Preview
+          </h3>
+
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '16px', borderBottom: '1px solid var(--border-glass)', paddingBottom: '12px' }}>
+            <button
+              onClick={() => {
+                playSound(800, 60);
+                setActivePreviewTab('thermal');
+              }}
+              style={{
+                fontSize: 'var(--text-sm)', fontWeight: 700, padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', transition: 'all 0.2s',
+                border: `1px solid ${activePreviewTab === 'thermal' ? 'var(--color-primary)' : 'var(--border-glass)'}`,
+                background: activePreviewTab === 'thermal' ? 'var(--color-primary-glow)' : 'var(--bg-primary)',
+                color: activePreviewTab === 'thermal' ? 'var(--color-primary)' : 'var(--text-secondary)'
+              }}
+            >
+              Thermal Roll
+            </button>
+            <button
+              onClick={() => {
+                playSound(800, 60);
+                setActivePreviewTab('invoice');
+              }}
+              style={{
+                fontSize: 'var(--text-sm)', fontWeight: 700, padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', transition: 'all 0.2s',
+                border: `1px solid ${activePreviewTab === 'invoice' ? 'var(--color-primary)' : 'var(--border-glass)'}`,
+                background: activePreviewTab === 'invoice' ? 'var(--color-primary-glow)' : 'var(--bg-primary)',
+                color: activePreviewTab === 'invoice' ? 'var(--color-primary)' : 'var(--text-secondary)'
+              }}
+            >
+              Standard A4 Invoice
+            </button>
+          </div>
+
+          <div id="receipt-preview-container" style={{ display: 'flex', justifyContent: 'center', padding: '10px 0', overflowX: 'auto' }}>
+            {activePreviewTab === 'thermal' ? (
+              <div
+                className="receipt-preview-paper"
+                style={{
+                  width: config.printerWidth === '58' ? '200px' : config.printerWidth === '76' ? '250px' : config.printerWidth === '80' ? '280px' : '360px',
+                  fontWeight: config.printDensity === 'bold' ? '700' : config.printDensity === 'light' ? '300' : '400',
+                  background: '#FFF', color: '#000', padding: '16px', fontFamily: 'monospace', fontSize: '10px', whiteSpace: 'pre-wrap',
+                  boxShadow: '0 10px 25px rgba(0,0,0,0.4)', borderRadius: '4px'
+                }}
+              >
+                {thermalPreviewContent}
+              </div>
+            ) : (
+              <iframe
+                id="invoice-preview-iframe"
+                srcDoc={invoiceHtml}
+                style={{
+                  width: '100%', height: '540px', border: '1px solid var(--border-glass)',
+                  borderRadius: '12px', background: '#fff', boxShadow: '0 15px 35px rgba(0,0,0,0.4)'
+                }}
+              ></iframe>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'center', marginTop: '16px' }}>
+            <button onClick={handlePrintTest} disabled={!printerConnected} className="btn btn-secondary btn-sm" style={{ fontSize: 'var(--text-xs)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '8px 16px' }}>
+              <span aria-hidden="true" className="material-symbols-rounded" style={{ fontSize: '16px' }}>print</span>
+              Print Sample Bill
+            </button>
+          </div>
+        </div>
+
+        {/* Floating Save All Button */}
+        <button onClick={handleSave} className="btn btn-primary btn-block btn-lg" style={{
+          height: '48px', fontSize: 'var(--text-sm)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px', color: '#fff', border: 'none', cursor: 'pointer', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-primary)'
+        }}>
+          <span aria-hidden="true" className="material-symbols-rounded" style={{ fontSize: '20px' }}>save</span>
+          Save All Configurations
+        </button>
+      </div>
+
+    </div>
+  );
+}

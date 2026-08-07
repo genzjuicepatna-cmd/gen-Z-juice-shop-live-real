@@ -1,0 +1,470 @@
+/* ============================================
+   Trending Juice — Base & Reset
+   Global resets, defaults, and utility classes
+   ============================================ */
+
+@import './variables.css';
+
+/* ── CSS Reset ── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  tab-size: 4;
+  line-height: 1.5;
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: 1.6;
+  letter-spacing: 0;
+  word-spacing: 0.01em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  transition: background-color 0.35s ease, color 0.35s ease;
+}
+
+/* ── Light Theme: fix hardcoded dark backgrounds ── */
+:root[data-theme="light"] .card,
+:root[data-theme="light"] .settings-card,
+:root[data-theme="light"] .premium-card,
+:root[data-theme="light"] .modal {
+  background: #FFFFFF;
+  border-color: rgba(15, 23, 42, 0.08);
+  box-shadow: var(--shadow-md);
+}
+
+:root[data-theme="light"] .pin-dot {
+  border-color: rgba(15, 23, 42, 0.25) !important;
+}
+
+:root[data-theme="light"] .sidebar {
+  background: #FFFFFF;
+  border-color: rgba(15, 23, 42, 0.06);
+  box-shadow: 2px 0 8px rgba(15, 23, 42, 0.02);
+}
+
+:root[data-theme="light"] .app-header {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(15, 23, 42, 0.06);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.02);
+}
+
+:root[data-theme="light"] .btn-secondary {
+  background: #F1F5F9;
+  border-color: rgba(15, 23, 42, 0.08);
+  color: var(--text-primary);
+}
+
+:root[data-theme="light"] .btn-secondary:hover {
+  background: #E2E8F0;
+  border-color: rgba(15, 23, 42, 0.16);
+}
+
+:root[data-theme="light"] .input {
+  background: #FFFFFF;
+  border: 1.5px solid rgba(15, 23, 42, 0.12);
+  color: var(--text-primary);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.02);
+  transition: all var(--transition-fast) ease;
+}
+
+:root[data-theme="light"] .input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.15), inset 0 1px 2px rgba(0, 0, 0, 0.01);
+}
+
+:root[data-theme="light"] .tab.active {
+  color: var(--color-primary-on-surface);
+  border-color: var(--color-primary);
+}
+
+/* System theme - same overrides via media query */
+@media (prefers-color-scheme: light) {
+  :root[data-theme="system"] .card,
+  :root[data-theme="system"] .settings-card,
+  :root[data-theme="system"] .premium-card,
+  :root[data-theme="system"] .modal {
+    background: #FFFFFF;
+    border-color: rgba(15, 23, 42, 0.08);
+    box-shadow: var(--shadow-md);
+  }
+
+  :root[data-theme="system"] .sidebar {
+    background: #FFFFFF;
+    border-color: rgba(15, 23, 42, 0.06);
+    box-shadow: 2px 0 8px rgba(15, 23, 42, 0.02);
+  }
+
+  :root[data-theme="system"] .app-header {
+    background: rgba(255, 255, 255, 0.9);
+    border-color: rgba(15, 23, 42, 0.06);
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.02);
+  }
+
+  :root[data-theme="system"] .btn-secondary {
+    background: #F1F5F9;
+    border-color: rgba(15, 23, 42, 0.08);
+    color: var(--text-primary);
+  }
+
+  :root[data-theme="system"] .btn-secondary:hover {
+    background: #E2E8F0;
+    border-color: rgba(15, 23, 42, 0.16);
+  }
+
+  :root[data-theme="system"] .input {
+    background: #FFFFFF;
+    border: 1.5px solid rgba(15, 23, 42, 0.12);
+    color: var(--text-primary);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.02);
+    transition: all var(--transition-fast) ease;
+  }
+
+  :root[data-theme="system"] .input:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.15), inset 0 1px 2px rgba(0, 0, 0, 0.01);
+  }
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  font-weight: var(--font-bold);
+  /* Bricolage Grotesque is drawn tight; the old 0 tracking leaves headlines
+     looking loose and generic at display sizes. */
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+/* Display-scale utilities. Fluid by design — one headline rule serves a 360px
+   phone and a 1440px desktop without a breakpoint per step. */
+.display-xl,
+.display-lg,
+.display-md,
+.display-sm {
+  font-family: var(--font-display);
+  font-weight: var(--font-extrabold);
+  letter-spacing: var(--tracking-display);
+  line-height: var(--leading-display);
+  text-wrap: balance;
+}
+
+.display-xl { font-size: var(--display-xl); }
+.display-lg { font-size: var(--display-lg); }
+.display-md { font-size: var(--display-md); }
+.display-sm { font-size: var(--display-sm); }
+
+/* Totals, prices and analytics columns must not reflow as digits change. */
+.numeric,
+.tabular {
+  font-family: var(--font-numeric);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+/* ── Dark Scrollbar ── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--bg-card);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary);
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--bg-card) transparent;
+}
+
+/* ── Selection ── */
+::selection {
+  background-color: rgba(var(--color-primary-rgb), 0.3);
+  color: var(--text-primary);
+}
+
+::-moz-selection {
+  background-color: rgba(var(--color-primary-rgb), 0.3);
+  color: var(--text-primary);
+}
+
+/* ── Placeholder ── */
+::placeholder {
+  color: var(--text-muted);
+  opacity: 1;
+}
+
+/* ══════════════════════════════════════════════════
+   REDUCED MOTION — global guard
+   Applies to every stylesheet, not just the storefront. The staff OS uses
+   spring easing, a 20s hero pan, and view-enter transitions; users who ask
+   the OS for less motion must not receive any of it. Durations collapse to
+   ~0 rather than `none` so transitionend/animationend listeners still fire.
+   ══════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  html,
+  body,
+  .storefront-shell,
+  .store-checkout-shell,
+  .store-success-shell {
+    scroll-behavior: auto !important;
+  }
+
+  /* Transform-based flourishes read as motion even at 0ms; neutralize them. */
+  .input:focus,
+  .menu-item:hover,
+  .card:hover {
+    transform: none !important;
+  }
+}
+
+/* ── Focus Visible ──
+   Uses --focus-ring, not --color-primary: the vivid mango measures ~2.1:1 on
+   a white surface, below the 3:1 a focus indicator has to clear. --focus-ring
+   resolves to the deepened accent in light mode and the lifted one in dark,
+   and both are asserted by scripts/check-contrast.js. */
+:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* ── Anchor Defaults ── */
+a {
+  color: var(--color-primary-on-surface);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+a:hover {
+  color: var(--color-primary-hover);
+}
+
+/* ── Image Defaults ── */
+img,
+svg {
+  max-width: 100%;
+  display: block;
+}
+
+/* ── List Reset ── */
+ul,
+ol {
+  list-style: none;
+}
+
+/* ── Table Reset ── */
+table {
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+/* ── Button Reset ── */
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+/* ── Input Reset ── */
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+/* ── Misc Resets ── */
+hr {
+  border: none;
+  height: 1px;
+  background: var(--border-color);
+}
+
+strong,
+b {
+  font-weight: var(--font-bold);
+}
+
+/* ═══════════════════════════════════════════
+   UTILITY CLASSES
+   ═══════════════════════════════════════════ */
+
+/* ── Accessibility ── */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* ── Text Overflow ── */
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ── Flexbox ── */
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ── Text Alignment ── */
+.text-center { text-align: center; }
+.text-right  { text-align: right; }
+.text-left   { text-align: left; }
+
+/* ── Font Weights ── */
+.font-medium   { font-weight: var(--font-medium); }
+.font-semibold { font-weight: var(--font-semibold); }
+.font-bold     { font-weight: var(--font-bold); }
+
+/* ── Font Sizes ── */
+.text-xs { font-size: var(--text-xs); }
+.text-sm { font-size: var(--text-sm); }
+.text-lg { font-size: var(--text-lg); }
+.text-xl { font-size: var(--text-xl); }
+.text-2xl { font-size: var(--text-2xl); }
+
+/* ── Text Colors ── */
+.text-primary-color { color: var(--color-primary-on-surface); }
+.text-success       { color: var(--color-success); }
+.text-danger        { color: var(--color-danger); }
+.text-warning       { color: var(--color-warning); }
+.text-muted         { color: var(--text-muted); }
+
+/* ── Margin Top ── */
+.mt-1 { margin-top: var(--space-1); }
+.mt-2 { margin-top: var(--space-2); }
+.mt-3 { margin-top: var(--space-3); }
+.mt-4 { margin-top: var(--space-4); }
+.mt-5 { margin-top: var(--space-5); }
+.mt-6 { margin-top: var(--space-6); }
+
+/* ── Margin Bottom ── */
+.mb-1 { margin-bottom: var(--space-1); }
+.mb-2 { margin-bottom: var(--space-2); }
+.mb-3 { margin-bottom: var(--space-3); }
+.mb-4 { margin-bottom: var(--space-4); }
+.mb-5 { margin-bottom: var(--space-5); }
+.mb-6 { margin-bottom: var(--space-6); }
+
+/* ── Margin Auto ── */
+.ml-auto { margin-left: auto; }
+.mr-auto { margin-right: auto; }
+
+/* ── Gap ── */
+.gap-1 { gap: var(--space-1); }
+.gap-2 { gap: var(--space-2); }
+.gap-3 { gap: var(--space-3); }
+.gap-4 { gap: var(--space-4); }
+
+/* ── Sizing ── */
+.w-full { width: 100%; }
+.h-full { height: 100%; }
+
+/* ── Display & Visibility ── */
+.hidden    { display: none; }
+.invisible { visibility: hidden; }
+
+/* ── Interaction ── */
+.pointer   { cursor: pointer; }
+.no-select { user-select: none; -webkit-user-select: none; }
+
+/* ── Scrollbar Hide ── */
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* ── Material Symbols Rounded Reset ── */
+.material-symbols-rounded {
+  font-family: 'Material Symbols Rounded';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+  
+  /* Layout stabilization if font fails or is loading */
+  width: 1em;
+  height: 1em;
+  overflow: hidden;
+  text-align: center;
+  flex-shrink: 0;
+}
+

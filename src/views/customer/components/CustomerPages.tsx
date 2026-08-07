@@ -1,0 +1,187 @@
+// @ts-nocheck
+import React from 'react';
+import { formatCurrency, formatDateTime, parseOrderItems } from '../../../utils/helpers';
+// Shared with the statically exported /offers, /about, /catering and /support
+// pages so the app and the indexed pages can never tell different stories.
+import { STOREFRONT_PAGES } from '../../../content/storefront';
+
+const Icon = ({ children }) => <span className="material-symbols-rounded" aria-hidden="true">{children}</span>;
+
+function supportPhoneLinks(phone = '') {
+  const digits = String(phone).replace(/\D/g, '');
+  const normalized = digits.length === 10 ? `91${digits}` : digits;
+  if (!/^\d{11,15}$/.test(normalized)) return null;
+  return { telephone: `tel:+${normalized}`, whatsapp: `https://wa.me/${normalized}` };
+}
+
+export function CustomerPageHeader({ eyebrow, title, copy, onBack }) {
+  return (
+    <header className="customer-page-hero">
+      <button className="customer-back-link" type="button" onClick={onBack}><Icon>arrow_back</Icon> Home</button>
+      <p>{eyebrow}</p>
+      <h1>{title}</h1>
+      <div>{copy}</div>
+    </header>
+  );
+}
+
+export function OffersPage({ onBack, onOrder, offers = [] }) {
+  return (
+    <main className="customer-page">
+      <CustomerPageHeader eyebrow={STOREFRONT_PAGES.offers.eyebrow} title={STOREFRONT_PAGES.offers.title} copy={STOREFRONT_PAGES.offers.copy} onBack={onBack} />
+      <section className="customer-card-grid">
+        {offers.map(offer => (
+          <article className="customer-feature-card" key={offer.id || offer.code || offer.title}>
+            <Icon>{offer.icon || 'local_offer'}</Icon>
+            <small>{offer.label || 'Offer'}</small>
+            <h2>{offer.title}</h2>
+            <p>{offer.description}</p>
+            <strong>{offer.displayValue || 'Server validated'}</strong>
+            <button type="button" onClick={onOrder}>{offer.eligible === false ? 'Sign in to use' : 'Explore menu'} <Icon>arrow_forward</Icon></button>
+          </article>
+        ))}
+      </section>
+      <section className="customer-policy-panel">
+        <Icon>verified_user</Icon>
+        <div>
+          <h2>Fair offer promise</h2>
+          <p>Offer cards are informational. The app sends offer tags only; final price, taxes, eligibility, inventory, and payment state are accepted by the server.</p>
+        </div>
+      </section>
+    </main>
+  );
+}
+
+export function AboutPage({ onBack }) {
+  const page = STOREFRONT_PAGES.about;
+  return <main className="customer-page"><CustomerPageHeader eyebrow={page.eyebrow} title={page.title} copy={page.copy} onBack={onBack} /><section className="customer-story-grid">{page.pillars.map(pillar => <article key={pillar.index}><span>{pillar.index}</span><h2>{pillar.title}</h2><p>{pillar.copy}</p></article>)}</section></main>;
+}
+
+export function CateringPage({ onBack, supportPhone = '' }) {
+  const links = supportPhoneLinks(supportPhone);
+  const page = STOREFRONT_PAGES.catering;
+  return <main className="customer-page"><CustomerPageHeader eyebrow={page.eyebrow} title={page.title} copy={page.copy} onBack={onBack} /><section className="customer-contact-panel"><div><Icon>celebration</Icon><h2>{page.panelTitle}</h2><p>{page.panelCopy}</p></div>{links ? <a href={links.telephone}>Call the shop <Icon>call</Icon></a> : <p>Contact details will appear here once the shop publishes them.</p>}</section></main>;
+}
+
+export function SupportPage({ onBack, supportPhone = '' }) {
+  const page = STOREFRONT_PAGES.support;
+  const links = supportPhoneLinks(supportPhone);
+  return <main className="customer-page"><CustomerPageHeader eyebrow={page.eyebrow} title={page.title} copy={page.copy} onBack={onBack} /><section className="customer-faq-list">{page.faqs.map(([q, a]) => <details key={q}><summary>{q}<Icon>add</Icon></summary><p>{a}</p></details>)}</section>{links ? <div className="customer-support-actions"><a href={links.telephone}><Icon>call</Icon> Call us</a><a href={links.whatsapp}><Icon>chat</Icon> WhatsApp</a></div> : <p>Contact details will appear here once the shop publishes them.</p>}</main>;
+}
+
+function EmptyAccountCard({ icon, title, copy, action, onAction }) {
+  return <article className="customer-account-empty"><Icon>{icon}</Icon><h3>{title}</h3><p>{copy}</p>{action && <button type="button" onClick={onAction}>{action}</button>}</article>;
+}
+
+function getOrderSummary(order) {
+  return parseOrderItems(order.items).map(item => item.itemName || item.name || 'Menu item').slice(0, 3).join(', ');
+}
+
+export function AccountPage({ onBack, customer, orders = [], favorites = [], addresses = [], preferences = [], retentionPreferences = [], offers = [], onSignIn, onRewards, onReorder, onOpenMenu, onTogglePreference, onToggleRetentionPreference }) {
+  const firstName = (customer?.name || '').split(' ')[0] || 'there';
+  const hasCustomer = Boolean(customer);
+  const latestOrder = orders[0];
+
+  return (
+    <main className="customer-page">
+      <CustomerPageHeader
+        eyebrow="Your account"
+        title={hasCustomer ? `Welcome back, ${firstName}` : 'Your usual, remembered'}
+        copy={hasCustomer ? 'A proper customer hub: rewards, order history, favourites, addresses, preferences, and retention controls in one calm place.' : 'Sign in to collect rewards, follow orders, save addresses, and make checkout feel effortless.'}
+        onBack={onBack}
+      />
+
+      <section className="customer-account-panel">
+        <div className="customer-account-avatar"><Icon>person</Icon></div>
+        <div>
+          <small>{hasCustomer ? `${customer.tier || 'Bronze'} member` : 'Guest customer'}</small>
+          <h2>{customer?.name || 'Sign in to continue'}</h2>
+          <p>{hasCustomer ? `${orders.length} order${orders.length === 1 ? '' : 's'} found${latestOrder ? ` · Last order ${formatCurrency(latestOrder.total || 0)}` : ''}` : 'Order history, favourites, saved addresses, preferences, and rewards unlock after sign in.'}</p>
+        </div>
+        <button type="button" onClick={hasCustomer ? onRewards : onSignIn}>{hasCustomer ? 'View rewards' : 'Sign in'} <Icon>arrow_forward</Icon></button>
+      </section>
+
+      <section className="customer-account-grid" aria-label="Account highlights">
+        {[
+          ['receipt_long', 'Orders', `${orders.length || 'No'} recent`],
+          ['favorite', 'Favourites', `${favorites.length || 'No'} saved yet`],
+          ['location_on', 'Addresses', `${addresses.length || 'No'} saved`],
+          ['tune', 'Preferences', `${preferences.filter(p => p.enabled).length} selected`],
+        ].map(([icon, label, note]) => (
+          <button type="button" key={label} disabled={!hasCustomer} onClick={label === 'Orders' ? onOpenMenu : undefined}>
+            <Icon>{icon}</Icon><span>{label}</span><small>{hasCustomer ? note : 'Sign in required'}</small>
+          </button>
+        ))}
+      </section>
+
+      {hasCustomer && (
+        <section className="customer-account-sections">
+          <article className="customer-account-section customer-account-section-wide">
+            <div className="customer-section-title"><div><small>Recent orders</small><h2>Order again in seconds</h2></div><Icon>receipt_long</Icon></div>
+            {orders.length ? (
+              <div className="customer-order-list">
+                {orders.slice(0, 4).map(order => (
+                  <div className="customer-order-row" key={order.clientOrderId || order.id || order.orderNumber}>
+                    <div>
+                      <strong>#{order.displayToken || order.orderNumber}</strong>
+                      <p>{getOrderSummary(order) || 'Custom order'} · {formatDateTime(order.createdAt)}</p>
+                      <small>{order.status || 'pending'} · {order.paymentStatus || 'unpaid'}</small>
+                    </div>
+                    <span>{formatCurrency(order.total || 0)}</span>
+                    <button type="button" onClick={() => onReorder(order)}>Reorder</button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <EmptyAccountCard icon="restaurant_menu" title="No orders yet" copy="Your recent orders will appear here after checkout." action="Explore menu" onAction={onOpenMenu} />
+            )}
+          </article>
+
+          <article className="customer-account-section">
+            <div className="customer-section-title"><div><small>Smart favourites</small><h2>Drinks you come back for</h2></div><Icon>favorite</Icon></div>
+            {favorites.length ? (
+              <div className="customer-favorite-list">
+                {favorites.slice(0, 5).map(item => <button type="button" key={item.itemId || item.itemName} onClick={onOpenMenu}><span>{item.itemName}</span><small>Ordered {item.count || 1}x</small></button>)}
+              </div>
+            ) : (
+              <EmptyAccountCard icon="favorite" title="Favourites are learning" copy="Order a few times and this becomes a shortcut to your usuals." action="Start ordering" onAction={onOpenMenu} />
+            )}
+          </article>
+
+          <article className="customer-account-section">
+            <div className="customer-section-title"><div><small>Saved addresses</small><h2>Faster delivery</h2></div><Icon>location_on</Icon></div>
+            {addresses.length ? (
+              <div className="customer-address-list">
+                {addresses.slice(0, 4).map(address => <div key={address}><Icon>home_pin</Icon><span>{address}</span></div>)}
+              </div>
+            ) : (
+              <EmptyAccountCard icon="home_pin" title="No address saved yet" copy="Delivery addresses are remembered from successful orders." />
+            )}
+          </article>
+
+          <article className="customer-account-section customer-account-section-wide">
+            <div className="customer-section-title"><div><small>Preferences</small><h2>Make every checkout feel personal</h2></div><Icon>tune</Icon></div>
+            <div className="customer-preference-list">
+              {preferences.map(pref => <button type="button" className={pref.enabled ? 'is-active' : ''} key={pref.key} onClick={() => onTogglePreference(pref.key)}><Icon>{pref.icon}</Icon><span>{pref.label}</span></button>)}
+            </div>
+          </article>
+
+          <article className="customer-account-section">
+            <div className="customer-section-title"><div><small>Retention</small><h2>Updates you control</h2></div><Icon>notifications_active</Icon></div>
+            <div className="customer-preference-list customer-preference-list-compact">
+              {retentionPreferences.map(pref => <button type="button" className={pref.enabled ? 'is-active' : ''} key={pref.key} onClick={() => onToggleRetentionPreference(pref.key)}><Icon>{pref.icon}</Icon><span>{pref.label}</span></button>)}
+            </div>
+            <p className="customer-section-note">These preferences only store consent. Automated messages are not sent unless backend messaging is configured.</p>
+          </article>
+
+          <article className="customer-account-section">
+            <div className="customer-section-title"><div><small>Personal offers</small><h2>For your next visit</h2></div><Icon>redeem</Icon></div>
+            <div className="customer-favorite-list">
+              {offers.slice(0, 3).map(offer => <button type="button" key={offer.id || offer.code} onClick={onOpenMenu}><span>{offer.title}</span><small>{offer.displayValue}</small></button>)}
+            </div>
+          </article>
+        </section>
+      )}
+    </main>
+  );
+}

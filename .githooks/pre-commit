@@ -1,0 +1,16 @@
+#!/bin/sh
+EMAIL=$(git config user.email)
+if [ "$EMAIL" != "uninestindia@gmail.com" ]; then
+  echo "================================================================="
+  echo "❌ Git Commit Blocked: Incorrect Email Configured!"
+  echo "-----------------------------------------------------------------"
+  echo "Your current git user.email is: '$EMAIL'"
+  echo "This codebase requires commits to be authored by 'uninestindia@gmail.com'"
+  echo "to match your re-connected Vercel repository owner."
+  echo "================================================================="
+  exit 1
+fi
+
+
+
+

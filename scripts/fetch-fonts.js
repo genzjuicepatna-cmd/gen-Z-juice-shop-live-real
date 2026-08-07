@@ -1,0 +1,157 @@
+#!/usr/bin/env node
+/**
+ * Downloads the self-hosted copies of the app's two text faces.
+ *
+ * These were previously pulled from the Google Fonts CDN at runtime, which put
+ * two render-blocking third-party requests in front of first paint — a poor
+ * trade for an offline-first PWA whose users are often on constrained mobile
+ * connections. The stylesheet declares weights of 650/750/850, so the variable
+ * (wght-axis) files are required; static instances would round those off.
+ *
+ * Only the `latin` and `latin-ext` subsets are kept. Re-run if the font stack
+ * or weight range in variables.css changes.
+ *
+ *   node scripts/fetch-fonts.js
+ */
+
+import { mkdir, writeFile, stat } from 'node:fs/promises';
+import { join } from 'node:path';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+
+const run = promisify(execFile);
+
+const OUT_DIR = join(process.cwd(), 'public', 'assets', 'fonts');
+
+// A modern UA is required or the API serves legacy TTF instead of WOFF2.
+const UA =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+
+const FAMILIES = [
+  { css: 'Inter:wght@300..800', slug: 'inter' },
+  // Plus Jakarta Sans tops out at 800; the stylesheet's `font-weight: 900`
+  // declarations already clamp to it, here and on the CDN alike.
+  { css: 'Plus+Jakarta+Sans:wght@200..800', slug: 'plus-jakarta-sans' },
+  // Display face. Fredoka is a rounded geometric with soft terminals — the
+  // bouncy, friendly register the brand is going for. An angular grotesque
+  // reads editorial rather than playful, which made the storefront look like
+  // a generic delivery app wearing fruit colours.
+  { css: 'Fredoka:wght@300..700', slug: 'fredoka' },
+];
+
+const KEEP_SUBSETS = new Set(['latin', 'latin-ext']);
+
+async function fetchText(url) {
+  const res = await fetch(url, { headers: { 'User-Agent': UA } });
+  if (!res.ok) throw new Error(`GET ${url} -> ${res.status}`);
+  return res.text();
+}
+
+async function fetchBinary(url) {
+  const res = await fetch(url, { headers: { 'User-Agent': UA } });
+  if (!res.ok) throw new Error(`GET ${url} -> ${res.status}`);
+  return Buffer.from(await res.arrayBuffer());
+}
+
+/** Split the Google CSS into per-subset blocks using the `/* subset *\/` markers. */
+function parseBlocks(css) {
+  const blocks = [];
+  const re = /\/\*\s*([a-z-]+)\s*\*\/\s*(@font-face\s*\{[^}]+\})/g;
+  let match;
+  while ((match = re.exec(css)) !== null) {
+    blocks.push({ subset: match[1], rule: match[2] });
+  }
+  return blocks;
+}
+
+function extract(rule, prop) {
+  const m = rule.match(new RegExp(`${prop}:\\s*([^;]+);`));
+  return m ? m[1].trim() : null;
+}
+
+/**
+ * Pin variable-font axes with fontTools, in place.
+ *
+ * Optional by design: fontTools is a Python dependency the Node toolchain does
+ * not otherwise need, so a machine without it still produces a working (just
+ * larger) font rather than failing the build.
+ */
+async function instanceAxes(filePath, axes) {
+  const args = Object.entries(axes).map(([axis, value]) => `${axis}=${value}`);
+  const before = (await stat(filePath)).size;
+
+  try {
+    await run('python3', ['-m', 'fontTools.varLib.instancer', filePath, ...args, '--output', filePath]);
+  } catch (err) {
+    const hint = /No module named/.test(String(err.stderr || err.message))
+      ? 'fontTools not installed (pip install fonttools brotli)'
+      : String(err.stderr || err.message).split('\n')[0];
+    console.warn(`    ! kept variable axes — ${hint}`);
+    return before;
+  }
+
+  const after = (await stat(filePath)).size;
+  console.log(
+    `    pinned ${args.join(' ')}: ${(before / 1024).toFixed(1)} KB -> ${(after / 1024).toFixed(1)} KB`
+  );
+  return after;
+}
+
+async function main() {
+  await mkdir(OUT_DIR, { recursive: true });
+
+  const faces = [];
+
+  for (const family of FAMILIES) {
+    const css = await fetchText(`https://fonts.googleapis.com/css2?family=${family.css}&display=swap`);
+    const blocks = parseBlocks(css).filter((b) => KEEP_SUBSETS.has(b.subset));
+
+    if (blocks.length === 0) throw new Error(`no latin subsets found for ${family.css}`);
+
+    for (const block of blocks) {
+      const srcUrl = block.rule.match(/url\((https:\/\/[^)]+)\)/)?.[1];
+      if (!srcUrl) continue;
+
+      const fileName = `${family.slug}-${block.subset}.woff2`;
+      const filePath = join(OUT_DIR, fileName);
+      const bytes = await fetchBinary(srcUrl);
+      await writeFile(filePath, bytes);
+
+      console.log(`  ${fileName}  ${(bytes.length / 1024).toFixed(1)} KB`);
+      if (family.instance) await instanceAxes(filePath, family.instance);
+
+      faces.push({
+        family: extract(block.rule, 'font-family'),
+        weight: extract(block.rule, 'font-weight'),
+        style: extract(block.rule, 'font-style') || 'normal',
+        unicodeRange: extract(block.rule, 'unicode-range'),
+        fileName,
+      });
+    }
+  }
+
+  const header = `/* Generated by scripts/fetch-fonts.js — do not edit by hand.
+   Self-hosted so first paint never blocks on a third-party origin and the
+   PWA renders correctly offline. Variable (wght-axis) files, latin subsets. */\n\n`;
+
+  const rules = faces
+    .map(
+      (f) => `@font-face {
+  font-family: ${f.family};
+  font-style: ${f.style};
+  font-weight: ${f.weight};
+  font-display: swap;
+  src: url('/assets/fonts/${f.fileName}') format('woff2-variations');
+  unicode-range: ${f.unicodeRange};
+}`
+    )
+    .join('\n\n');
+
+  await writeFile(join(process.cwd(), 'src', 'styles', 'fonts.css'), header + rules + '\n');
+  console.log(`\nWrote src/styles/fonts.css with ${faces.length} @font-face rules.`);
+}
+
+main().catch((err) => {
+  console.error('[fetch-fonts] ' + err.message);
+  process.exit(1);
+});

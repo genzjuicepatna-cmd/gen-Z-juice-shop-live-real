@@ -1,0 +1,99 @@
+name: Launch Readiness
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  web:
+    name: Web build, security, E2E, accessibility
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run launch:verify
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      # This step used `npx vite preview`. vite is not a dependency of this
+      # project — it is Next.js — so the command could never have started a
+      # server, and the step asserted no score even if it had. Lighthouse had
+      # therefore never actually run against this app. `npm run preview` is the
+      # real command (serve dist), and the thresholds below are what turn a
+      # regression into a red build instead of an artifact nobody opens.
+      - name: Lighthouse public ordering smoke
+        run: |
+          npm run build
+          npm run preview &
+          for i in {1..30}; do curl -fsS http://127.0.0.1:3000 >/dev/null && break; sleep 1; done
+          # Three runs, median. Performance is a timing measurement: this
+          # build scored 94, 55, 90 and 64 on four consecutive runs of
+          # identical code on a busy machine. A gate reading one run would fail
+          # about a third of the time and be deleted within a week.
+          for i in 1 2 3; do
+            npx lighthouse http://127.0.0.1:3000/ \
+              --chrome-flags="--headless=new --no-sandbox --disable-dev-shm-usage" \
+              --only-categories=performance,accessibility,best-practices,seo \
+              --output=json --output-path=./lighthouse-report-$i.json --quiet
+          done
+          cp ./lighthouse-report-1.json ./lighthouse-report.json
+          node scripts/check-lighthouse.js ./lighthouse-report-1.json ./lighthouse-report-2.json ./lighthouse-report-3.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: web-launch-reports
+          path: |
+            playwright-report
+            test-results
+            lighthouse-report-*.json
+
+  android-release:
+    name: Android release build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - run: npm ci
+      - run: npm run build
+      - name: Check Android signing secrets
+        id: signing
+        run: |
+          if [ -z "$STORE_KEYSTORE_B64" ]; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "Android signing secrets are not configured; signed release build is skipped."
+          else
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          STORE_KEYSTORE_B64: ${{ secrets.STORE_KEYSTORE_B64 }}
+      - name: Restore Android keystore
+        if: steps.signing.outputs.available == 'true'
+        run: |
+          echo "$STORE_KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+        env:
+          STORE_KEYSTORE_B64: ${{ secrets.STORE_KEYSTORE_B64 }}
+      - name: Build signed release APK
+        if: steps.signing.outputs.available == 'true'
+        working-directory: android
+        run: ./gradlew assembleRelease
+        env:
+          STORE_KEYSTORE: ${{ runner.temp }}/release.jks
+          STORE_KEYSTORE_PASSWORD: ${{ secrets.STORE_KEYSTORE_PASSWORD }}
+          STORE_KEY_ALIAS: ${{ secrets.STORE_KEY_ALIAS }}
+          STORE_KEY_PASSWORD: ${{ secrets.STORE_KEY_PASSWORD }}
+      - uses: actions/upload-artifact@v4
+        if: steps.signing.outputs.available == 'true'
+        with:
+          name: android-release-apk
+          path: android/app/build/outputs/apk/release/*.apk

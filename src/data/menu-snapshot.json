@@ -1,0 +1,406 @@
+{
+  "generatedAt": "2026-07-30T13:34:37.363964Z",
+  "storeId": "trending-juice",
+  "source": "seed",
+  "categories": [
+    {
+      "id": 1,
+      "name": "Juices",
+      "icon": "🍊",
+      "items": [
+        {
+          "id": 5,
+          "name": "Anar Juice (Large)",
+          "price": 80,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 6,
+          "name": "Anar Juice (XL)",
+          "price": 150,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 9,
+          "name": "Apple (Large)",
+          "price": 60,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 10,
+          "name": "Apple (XL)",
+          "price": 100,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 27,
+          "name": "Banana Peanut (Large)",
+          "price": 40,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 28,
+          "name": "Banana Peanut (XL)",
+          "price": 70,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 17,
+          "name": "Banana Shake (Large)",
+          "price": 30,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 18,
+          "name": "Banana Shake (XL)",
+          "price": 50,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 7,
+          "name": "Beetroot Juice (Large)",
+          "price": 30,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 8,
+          "name": "Beetroot Juice (XL)",
+          "price": 50,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 23,
+          "name": "Cold Coffee (Large)",
+          "price": 50,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 24,
+          "name": "Cold Coffee (XL)",
+          "price": 90,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 15,
+          "name": "Fruit Chaat (Large)",
+          "price": 30,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 16,
+          "name": "Fruit Chaat (XL)",
+          "price": 50,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 21,
+          "name": "Khajoor Shake (Large)",
+          "price": 40,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 22,
+          "name": "Khajoor Shake (XL)",
+          "price": 70,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 19,
+          "name": "Mango Shake (Large)",
+          "price": 40,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 20,
+          "name": "Mango Shake (XL)",
+          "price": 70,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 13,
+          "name": "Mix Juice (Large)",
+          "price": 50,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 14,
+          "name": "Mix Juice (XL)",
+          "price": 90,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 1,
+          "name": "Mosambi (Large)",
+          "price": 40,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 2,
+          "name": "Mosambi (XL)",
+          "price": 70,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 3,
+          "name": "Orange Juice (Large)",
+          "price": 30,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 4,
+          "name": "Orange Juice (XL)",
+          "price": 50,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 25,
+          "name": "Papaya (Large)",
+          "price": 15,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 26,
+          "name": "Papaya (XL)",
+          "price": 25,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 11,
+          "name": "Pineapple (Large)",
+          "price": 50,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 12,
+          "name": "Pineapple (XL)",
+          "price": 80,
+          "isVeg": true,
+          "imageUrl": ""
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Shakes",
+      "icon": "🥤",
+      "items": [
+        {
+          "id": 29,
+          "name": "Butter Shake (Large)",
+          "price": 40,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 30,
+          "name": "Butter Shake (XL)",
+          "price": 70,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 41,
+          "name": "Butterscotch Shake (Large)",
+          "price": 60,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 42,
+          "name": "Butterscotch Shake (XL)",
+          "price": 100,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 43,
+          "name": "Dry Fruits Shake (Large)",
+          "price": 60,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 44,
+          "name": "Dry Fruits Shake (XL)",
+          "price": 110,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 31,
+          "name": "Khajoor Banana Shake (Large)",
+          "price": 40,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 32,
+          "name": "Khajoor Banana Shake (XL)",
+          "price": 70,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 37,
+          "name": "KitKat Shake (Large)",
+          "price": 60,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 38,
+          "name": "KitKat Shake (XL)",
+          "price": 100,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 35,
+          "name": "Oreo Shake (Large)",
+          "price": 60,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 36,
+          "name": "Oreo Shake (XL)",
+          "price": 100,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 39,
+          "name": "Strawberry Shake (Large)",
+          "price": 60,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 40,
+          "name": "Strawberry Shake (XL)",
+          "price": 100,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 33,
+          "name": "Vanilla Shake (Large)",
+          "price": 60,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 34,
+          "name": "Vanilla Shake (XL)",
+          "price": 100,
+          "isVeg": true,
+          "imageUrl": ""
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Special",
+      "icon": "✨",
+      "items": [
+        {
+          "id": 49,
+          "name": "Lassi (Large)",
+          "price": 30,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 50,
+          "name": "Lassi (XL)",
+          "price": 50,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 45,
+          "name": "Lemon Water (Large)",
+          "price": 20,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 46,
+          "name": "Lemon Water (XL)",
+          "price": 30,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 47,
+          "name": "Virgin Mojito (Large)",
+          "price": 50,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 48,
+          "name": "Virgin Mojito (XL)",
+          "price": 90,
+          "isVeg": true,
+          "imageUrl": ""
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Combos",
+      "icon": "🎁",
+      "items": [
+        {
+          "id": 53,
+          "name": "Cool Duo — Any Shake + Cold Coffee",
+          "price": 110,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 52,
+          "name": "Fruit Fusion — Any Juice + Fruit Chaat",
+          "price": 100,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 51,
+          "name": "Power Boost — Any Juice + Any Shake",
+          "price": 120,
+          "isVeg": true,
+          "imageUrl": ""
+        }
+      ]
+    }
+  ]
+}

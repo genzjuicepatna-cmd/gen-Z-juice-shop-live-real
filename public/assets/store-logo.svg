@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="Trending Juice">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FF9E1B"/>
+      <stop offset="1" stop-color="#FF4D8D"/>
+    </linearGradient>
+  </defs>
+  <rect width="96" height="96" rx="26" fill="url(#g)"/>
+  <path d="M48 20c9 11 16 19.5 16 28a16 16 0 0 1-32 0c0-8.5 7-17 16-28z" fill="#1B1023"/>
+  <circle cx="41.5" cy="49" r="4" fill="#FFF9F0" opacity=".85"/>
+</svg>

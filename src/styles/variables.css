@@ -1,0 +1,540 @@
+/**
+ * ═══════════════════════════════════════════════════
+ *  Design tokens — "Juice Pop"
+ *  Version: 5.0.0
+ * ═══════════════════════════════════════════════════
+ *
+ *  Two palettes, one structure:
+ *    :root                        "Night Juice"  — dark, the ops/POS default
+ *    :root[data-theme="light"]    "Coconut"      — light, the storefront look
+ *
+ *  Every accent carries four jobs, and they are not interchangeable:
+ *
+ *    --x            the vivid fruit colour. Fills, graphics, large display
+ *                   type. Too bright to carry white text.
+ *    --x-ink        the text colour that sits ON that vivid fill. Dark ink,
+ *                   not white — that is what lets the fill stay saturated and
+ *                   still clear AA.
+ *    --x-on-surface the accent used AS text on a page surface. Deepened in
+ *                   light mode, lifted in dark mode.
+ *    --x-fill       a deepened fill for the legacy case of WHITE text on the
+ *                   accent. Keep using it where white labels already exist.
+ *
+ *  Every one of those pairs is asserted by scripts/check-contrast.js, which
+ *  runs in `npm run build`. Do not adjust a colour here without re-running it:
+ *
+ *    npm run check:contrast -- --verbose
+ *
+ *  The light palette is declared twice — once for the explicit toggle and
+ *  once inside the prefers-color-scheme block for data-theme="system". CSS
+ *  cannot share a declaration block across a media query, and `light-dark()`
+ *  is not safe for the Android WebView this ships to, so the duplication is
+ *  deliberate and the contrast script fails the build if the two drift.
+ */
+
+@font-face {
+  font-family: 'Material Symbols Rounded';
+  font-style: normal;
+  font-weight: 400;
+  /* Subset to the 148 icons this app actually uses: 1.72 MB TTF -> 17.7 KB WOFF2.
+     Regenerate with fontTools if new icon names are introduced. */
+  src: url('/assets/material-symbols-rounded.woff2') format('woff2');
+  /* 'block' (not 'swap') is deliberate for an icon font: swap would flash the
+     raw ligature text ("settings") before the glyph. At 17.7 KB the block
+     period is imperceptible. */
+  font-display: block;
+}
+
+:root {
+  color-scheme: dark;
+
+  /* ── Typography Fonts ────────────────────────────
+     Display is Fredoka: a rounded geometric with soft terminals. An angular
+     grotesque reads editorial; this register reads playful, which is the
+     whole point of the brand. 29 KB for the latin subset. */
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Fredoka', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-sidebar: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  /* Inter's tabular figures keep POS totals, receipts and analytics columns
+     from shifting as digits change. */
+  --font-numeric: 'Inter', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+
+  /* ── Fruit palette ──────────────────────────────── */
+  --juice-mango: #FF9E1B;
+  --juice-berry: #FF4D8D;
+  --juice-lime: #7CE04F;
+  --juice-blueberry: #8B7CFF;
+  --juice-watermelon: #FF6B70;
+  --juice-coconut: #FFF9F0;
+  --juice-ink: #1B1023;
+  /* Acid lime is the loudest thing in the palette and the primary CTA fill.
+     Against the ink it measures ~14:1, so it can shout without costing
+     legibility — the rare case where the brightest option is also the most
+     accessible. */
+  --juice-acid: #D9F24E;
+  --juice-punch: #FF3D71;
+  --juice-grape: #A78BFA;
+
+  /* ── NextGenOS Platform Brand ────────────────── */
+  --nextgenos-purple: #8B5CF6;
+  --nextgenos-purple-rgb: 139, 92, 246;
+  --nextgenos-purple-on-surface: #B9AEFF;
+  --nextgenos-purple-glow: rgba(139, 92, 246, 0.35);
+  --nextgenos-purple-bg: rgba(139, 92, 246, 0.08);
+  --nextgenos-purple-border: rgba(139, 92, 246, 0.22);
+
+  /* Platform Signature (Steganographic) */
+  --_ng-sig-1: 78; --_ng-sig-2: 101; --_ng-sig-3: 120; --_ng-sig-4: 116;
+  --_ng-sig-5: 71; --_ng-sig-6: 101; --_ng-sig-7: 110;
+  --_ng-sig-8: 79; --_ng-sig-9: 83;
+
+  /* ── HSL Base Values (mango) ── */
+  --primary-h: 35;
+  --primary-s: 100%;
+  --primary-l: 55%;
+
+  /* ── Surfaces — Night Juice ── */
+  --bg-primary: #120C18;
+  --bg-surface: #1A1122;
+  --bg-secondary: #221630;
+  --bg-card: rgba(255, 255, 255, 0.03);
+  --bg-card-hover: rgba(255, 255, 255, 0.06);
+  --bg-input: rgba(255, 255, 255, 0.02);
+  --bg-active: rgba(255, 255, 255, 0.09);
+  --bg-surface-glass: rgba(26, 17, 34, 0.72);
+
+  /* ── Accents ── */
+  --color-primary: #FF9E1B;
+  --color-primary-hover: #FFB347;
+  --color-primary-rgb: 255, 158, 27;
+  --color-primary-glow: rgba(255, 158, 27, 0.24);
+  --color-primary-on-surface: #FF9E1B;
+  --color-primary-ink: #1B1023;
+  --color-primary-fill: #A85D00;
+
+  --color-secondary: #FF4D8D;
+  --color-secondary-rgb: 255, 77, 141;
+
+  /* Acid lime: the primary call to action, always with ink. */
+  --color-cta: #D9F24E;
+  --color-cta-ink: #1B1023;
+  --color-cta-hover: #C8E63A;
+  /* Punch pink deep enough to carry a white label (5.1:1). */
+  --color-punch: #FF3D71;
+  --color-punch-fill: #D6165A;
+  --color-secondary-on-surface: #FF4D8D;
+  --color-secondary-ink: #1B1023;
+  --color-secondary-fill: #D9006A;
+
+  --color-success: #7CE04F;
+  --color-success-rgb: 124, 224, 79;
+  --color-success-on-surface: #7CE04F;
+  --color-success-ink: #1B1023;
+  --color-success-fill: #2F7A1A;
+
+  --color-danger: #FF6B70;
+  --color-danger-rgb: 255, 107, 112;
+  --color-danger-on-surface: #FF6B70;
+  --color-danger-ink: #1B1023;
+  --color-danger-fill: #C42227;
+  /* Referenced across views as a synonym; kept as an alias rather than a
+     second source of truth. */
+  --color-error: #FF6B70;
+
+  --color-warning: #FFC53D;
+  --color-warning-rgb: 255, 197, 61;
+  --color-warning-on-surface: #FFC53D;
+  --color-warning-ink: #1B1023;
+  --color-warning-fill: #96580A;
+
+  --color-info: #8B7CFF;
+  --color-info-rgb: 139, 124, 255;
+  --color-info-on-surface: #8B7CFF;
+  --color-info-ink: #1B1023;
+  --color-info-fill: #6A4FE8;
+
+  /* ── Text ── */
+  --text-primary: #FFF7EC;
+  --text-secondary: #C9BAD5;
+  --text-muted: #A493B2;
+
+  /* ── Borders ── */
+  --border-color: rgba(255, 255, 255, 0.07);
+  --border-subtle: rgba(255, 255, 255, 0.05);
+  /* Lifted to 0.45 alpha so an active/selected border clears the 3:1 that
+     non-text UI needs. The previous value measured 1.34:1 and was invisible
+     to anyone with low vision. */
+  --border-active: rgba(255, 255, 255, 0.45);
+  --border-glass: rgba(255, 255, 255, 0.08);
+  --focus-ring: var(--color-primary-on-surface);
+
+  /* ── Glass ── */
+  --glass-bg: rgba(26, 17, 34, 0.75);
+  --glass-bg-hover: rgba(255, 255, 255, 0.05);
+  --glass-border: rgba(255, 255, 255, 0.07);
+  --glass-border-active: rgba(255, 158, 27, 0.28);
+  --glass-backdrop-filter: blur(28px) saturate(200%);
+
+  /* ── Gradients ── */
+  --gradient-cosmic: linear-gradient(180deg, #120C18 0%, #1A1122 100%);
+  --gradient-primary: linear-gradient(135deg, #FF9E1B 0%, #FFB347 100%);
+  --gradient-success: linear-gradient(135deg, #7CE04F 0%, #4FBF2A 100%);
+  --gradient-glass: linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.01) 100%);
+  --gradient-smoothie: linear-gradient(135deg, #FF9E1B 0%, #FF4D8D 100%);
+  --gradient-detox: linear-gradient(135deg, #7CE04F 0%, #FF9E1B 100%);
+  --gradient-berry-blast: linear-gradient(135deg, #FF4D8D 0%, #8B7CFF 100%);
+  /* Sunset carries WHITE text, so both stops are deepened until white clears
+     4.5:1 across the whole ramp (5.1:1 at the orange end, 5.9:1 at the pink).
+     The brighter mango->berry ramp is for decoration only. */
+  /* Hero panel, taken from the shop's own menu board: near-black ground with a
+     deep magenta rise, which is what makes the lime CTA read the way it does on
+     the signage. The previous ramp was #C2410C -> #BE185D, a burnt orange to
+     maroon that had been darkened until white cleared 4.5:1 — the darkening is
+     what made it muddy, and the hue was the previous brand's anyway.
+     Both stops are tokens so scripts/check-contrast.js can gate them instead of
+     a comment claiming they were checked once. */
+  --hero-start: #1B1023;
+  --hero-end: #7A0F45;
+  --gradient-sunset: linear-gradient(150deg, var(--hero-start) 0%, var(--hero-end) 100%);
+  --gradient-club: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%);
+
+  /* ── Type scale ──
+     Body steps stay fixed; display steps are fluid so a 360px phone and a
+     1440px desktop each get a headline sized for their column. */
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.9375rem;
+  --text-md: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+
+  --display-sm: clamp(1.5rem, 3.5vw, 2rem);
+  --display-md: clamp(1.875rem, 5vw, 2.75rem);
+  --display-lg: clamp(2.25rem, 6.5vw, 4rem);
+  --display-xl: clamp(2.75rem, 8vw, 5.5rem);
+
+  --tracking-display: -0.03em;
+  --leading-display: 0.95;
+
+  /* ── Font Weights ── */
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+  --font-extrabold: 800;
+
+  /* ── Spacing (8pt grid) ── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+
+  /* ── Radius — rounder than the old scale; buttons are pills ── */
+  --radius-xs: 6px;
+  --radius-sm: 12px;
+  --radius-md: 18px;
+  --radius-lg: 28px;
+  --radius-xl: 40px;
+  --radius-full: 9999px;
+  /* Organic mask for fruit/category art. */
+  --radius-blob: 42% 58% 46% 54% / 55% 45% 52% 48%;
+
+  /* ── Shadows ── */
+  --shadow-sm:
+    0 1px 2px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.03);
+  --shadow-md:
+    0 8px 24px rgba(0, 0, 0, 0.55),
+    0 2px 4px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+  --shadow-lg:
+    0 16px 40px rgba(0, 0, 0, 0.65),
+    0 8px 16px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.06);
+  --shadow-xl:
+    0 32px 80px -12px rgba(0, 0, 0, 0.75),
+    0 18px 36px -10px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.07);
+  --shadow-modal: 0 25px 60px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.09);
+  --shadow-occlusion: inset 0 1px 0 rgba(255, 255, 255, 0.05), inset 0 -1px 0 rgba(0, 0, 0, 0.35);
+  --shadow-primary:
+    0 0 24px rgba(255, 158, 27, 0.18),
+    0 0 48px rgba(255, 158, 27, 0.07);
+  --shadow-glow-active: 0 0 0 4px rgba(255, 158, 27, 0.22);
+  --shadow-glow-purple: 0 0 24px rgba(139, 92, 246, 0.16);
+  --shadow-glow-success: 0 0 24px rgba(124, 224, 79, 0.16);
+  /* Hard offset shadow behind sticker badges. */
+  --shadow-sticker: 3px 3px 0 rgba(27, 16, 35, 0.9);
+
+  /* ── Motion ── */
+  --duration-instant: 90ms;
+  --duration-fast: 160ms;
+  --duration-normal: 320ms;
+  --duration-slow: 550ms;
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-bounce: cubic-bezier(0.68, -0.55, 0.27, 1.55);
+  --ease-squish: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --transition-fast: 160ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-normal: 320ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-slow: 550ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-spring: transform 0.52s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --transition-spring-all: all 0.52s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --transition-spring-slow: transform 0.65s cubic-bezier(0.175, 0.885, 0.32, 1.2);
+
+  /* ── Z-Index Scale ── */
+  --z-sticky: 100;
+  --z-dropdown: 1000;
+  --z-modal: 2000;
+  --z-toast: 3000;
+}
+
+/* ════════════════════════════════════════════════════
+ *  LIGHT THEME — "Coconut"
+ *  Keep in sync with the system block below; the contrast
+ *  script fails the build if they diverge.
+ * ════════════════════════════════════════════════════ */
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --bg-primary: #FFF9F0;
+  --bg-surface: #FFFFFF;
+  --bg-secondary: #FFF1E2;
+  --bg-card: #FFFFFF;
+  --bg-card-hover: #FFF9F0;
+  --bg-input: #FFFFFF;
+  --bg-active: rgba(27, 16, 35, 0.06);
+  --bg-surface-glass: rgba(255, 255, 255, 0.72);
+
+  --color-primary: #FF9E1B;
+  --color-primary-hover: #E8850A;
+  --color-primary-rgb: 255, 158, 27;
+  --color-primary-glow: rgba(255, 158, 27, 0.16);
+  --color-primary-on-surface: #8F4E00;
+  --color-primary-ink: #1B1023;
+  --color-primary-fill: #A85D00;
+
+  --color-secondary: #FF4D8D;
+  --color-secondary-rgb: 255, 77, 141;
+
+  /* Acid lime: the primary call to action, always with ink. */
+  --color-cta: #D9F24E;
+  --color-cta-ink: #1B1023;
+  --color-cta-hover: #C8E63A;
+  /* Punch pink deep enough to carry a white label (5.1:1). */
+  --color-punch: #FF3D71;
+  --color-punch-fill: #D6165A;
+  --color-secondary-on-surface: #B0004A;
+  --color-secondary-ink: #1B1023;
+  --color-secondary-fill: #D9006A;
+
+  --color-success: #4FBF2A;
+  --color-success-rgb: 79, 191, 42;
+  --color-success-on-surface: #2F6B14;
+  --color-success-ink: #1B1023;
+  --color-success-fill: #2F7A1A;
+
+  --color-danger: #FF6B70;
+  --color-danger-rgb: 255, 107, 112;
+  --color-danger-on-surface: #B01D22;
+  --color-danger-ink: #1B1023;
+  --color-danger-fill: #C42227;
+  --color-error: #FF6B70;
+
+  --color-warning: #FFC53D;
+  --color-warning-rgb: 255, 197, 61;
+  --color-warning-on-surface: #7A4600;
+  --color-warning-ink: #1B1023;
+  --color-warning-fill: #96580A;
+
+  --color-info: #8B7CFF;
+  --color-info-rgb: 139, 124, 255;
+  --color-info-on-surface: #4B3BC4;
+  --color-info-ink: #1B1023;
+  --color-info-fill: #6A4FE8;
+
+  --nextgenos-purple-on-surface: #5B34C7;
+  --nextgenos-purple-bg: rgba(139, 92, 246, 0.07);
+  --nextgenos-purple-border: rgba(139, 92, 246, 0.18);
+
+  --text-primary: #1B1023;
+  --text-secondary: #4A3B57;
+  --text-muted: #6B5B78;
+
+  --border-color: rgba(27, 16, 35, 0.10);
+  --border-subtle: rgba(27, 16, 35, 0.07);
+  /* 0.55 alpha over white lands at ~4.1:1 — the previous value was 1.40:1. */
+  --border-active: rgba(27, 16, 35, 0.55);
+  --border-glass: rgba(27, 16, 35, 0.08);
+  --focus-ring: var(--color-primary-on-surface);
+
+  --glass-bg: rgba(255, 255, 255, 0.85);
+  --glass-bg-hover: rgba(27, 16, 35, 0.04);
+  --glass-border: rgba(27, 16, 35, 0.09);
+  --glass-border-active: rgba(255, 158, 27, 0.35);
+  --glass-backdrop-filter: blur(28px) saturate(180%);
+
+  --gradient-cosmic: linear-gradient(135deg, #FFF9F0 0%, #FFE9D2 100%);
+  --gradient-primary: linear-gradient(135deg, #FF9E1B 0%, #FFB347 100%);
+  --gradient-success: linear-gradient(135deg, #4FBF2A 0%, #7CE04F 100%);
+  --gradient-glass: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.8) 100%);
+  --gradient-smoothie: linear-gradient(135deg, #FF9E1B 0%, #FF4D8D 100%);
+  --gradient-detox: linear-gradient(135deg, #7CE04F 0%, #FF9E1B 100%);
+  --gradient-berry-blast: linear-gradient(135deg, #FF4D8D 0%, #8B7CFF 100%);
+
+  --shadow-sm:
+    0 1px 2px rgba(27, 16, 35, 0.05),
+    0 0 0 1px rgba(27, 16, 35, 0.05);
+  --shadow-md:
+    0 6px 16px rgba(27, 16, 35, 0.07),
+    0 1px 3px rgba(27, 16, 35, 0.04),
+    0 0 0 1px rgba(27, 16, 35, 0.05);
+  --shadow-lg:
+    0 16px 36px rgba(27, 16, 35, 0.09),
+    0 4px 12px rgba(27, 16, 35, 0.05),
+    0 0 0 1px rgba(27, 16, 35, 0.06);
+  --shadow-xl:
+    0 32px 64px -12px rgba(27, 16, 35, 0.13),
+    0 16px 32px -10px rgba(27, 16, 35, 0.07),
+    0 0 0 1px rgba(27, 16, 35, 0.06);
+  --shadow-modal: 0 30px 60px rgba(27, 16, 35, 0.2), 0 0 0 1px rgba(27, 16, 35, 0.08);
+  --shadow-occlusion: inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 -1px 0 rgba(27, 16, 35, 0.06);
+  --shadow-primary:
+    0 0 20px rgba(255, 158, 27, 0.2),
+    0 0 40px rgba(255, 158, 27, 0.08);
+  --shadow-glow-active: 0 0 0 4px rgba(255, 158, 27, 0.3);
+  --shadow-glow-purple: 0 0 16px rgba(139, 92, 246, 0.12);
+  --shadow-glow-success: 0 0 16px rgba(79, 191, 42, 0.14);
+  --shadow-sticker: 3px 3px 0 rgba(27, 16, 35, 0.85);
+}
+
+/* ════════════════════════════════════════════════════
+ *  SYSTEM THEME — follows OS prefers-color-scheme.
+ *  Byte-for-byte the light block above.
+ * ════════════════════════════════════════════════════ */
+@media (prefers-color-scheme: light) {
+  :root[data-theme="system"] {
+    color-scheme: light;
+
+    --bg-primary: #FFF9F0;
+    --bg-surface: #FFFFFF;
+    --bg-secondary: #FFF1E2;
+    --bg-card: #FFFFFF;
+    --bg-card-hover: #FFF9F0;
+    --bg-input: #FFFFFF;
+    --bg-active: rgba(27, 16, 35, 0.06);
+    --bg-surface-glass: rgba(255, 255, 255, 0.72);
+
+    --color-primary: #FF9E1B;
+    --color-primary-hover: #E8850A;
+    --color-primary-rgb: 255, 158, 27;
+    --color-primary-glow: rgba(255, 158, 27, 0.16);
+    --color-primary-on-surface: #8F4E00;
+    --color-primary-ink: #1B1023;
+    --color-primary-fill: #A85D00;
+
+    --color-secondary: #FF4D8D;
+    --color-secondary-rgb: 255, 77, 141;
+  
+    /* Acid lime: the primary call to action, always with ink. */
+    --color-cta: #D9F24E;
+    --color-cta-ink: #1B1023;
+    --color-cta-hover: #C8E63A;
+    /* Punch pink deep enough to carry a white label (5.1:1). */
+    --color-punch: #FF3D71;
+    --color-punch-fill: #D6165A;
+    --color-secondary-on-surface: #B0004A;
+    --color-secondary-ink: #1B1023;
+    --color-secondary-fill: #D9006A;
+
+    --color-success: #4FBF2A;
+    --color-success-rgb: 79, 191, 42;
+    --color-success-on-surface: #2F6B14;
+    --color-success-ink: #1B1023;
+    --color-success-fill: #2F7A1A;
+
+    --color-danger: #FF6B70;
+    --color-danger-rgb: 255, 107, 112;
+    --color-danger-on-surface: #B01D22;
+    --color-danger-ink: #1B1023;
+    --color-danger-fill: #C42227;
+    --color-error: #FF6B70;
+
+    --color-warning: #FFC53D;
+    --color-warning-rgb: 255, 197, 61;
+    --color-warning-on-surface: #7A4600;
+    --color-warning-ink: #1B1023;
+    --color-warning-fill: #96580A;
+
+    --color-info: #8B7CFF;
+    --color-info-rgb: 139, 124, 255;
+    --color-info-on-surface: #4B3BC4;
+    --color-info-ink: #1B1023;
+    --color-info-fill: #6A4FE8;
+
+    --nextgenos-purple-on-surface: #5B34C7;
+    --nextgenos-purple-bg: rgba(139, 92, 246, 0.07);
+    --nextgenos-purple-border: rgba(139, 92, 246, 0.18);
+
+    --text-primary: #1B1023;
+    --text-secondary: #4A3B57;
+    --text-muted: #6B5B78;
+
+    --border-color: rgba(27, 16, 35, 0.10);
+    --border-subtle: rgba(27, 16, 35, 0.07);
+    --border-active: rgba(27, 16, 35, 0.55);
+    --border-glass: rgba(27, 16, 35, 0.08);
+    --focus-ring: var(--color-primary-on-surface);
+
+    --glass-bg: rgba(255, 255, 255, 0.85);
+    --glass-bg-hover: rgba(27, 16, 35, 0.04);
+    --glass-border: rgba(27, 16, 35, 0.09);
+    --glass-border-active: rgba(255, 158, 27, 0.35);
+    --glass-backdrop-filter: blur(28px) saturate(180%);
+
+    --gradient-cosmic: linear-gradient(135deg, #FFF9F0 0%, #FFE9D2 100%);
+    --gradient-primary: linear-gradient(135deg, #FF9E1B 0%, #FFB347 100%);
+    --gradient-success: linear-gradient(135deg, #4FBF2A 0%, #7CE04F 100%);
+    --gradient-glass: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.8) 100%);
+    --gradient-smoothie: linear-gradient(135deg, #FF9E1B 0%, #FF4D8D 100%);
+    --gradient-detox: linear-gradient(135deg, #7CE04F 0%, #FF9E1B 100%);
+    --gradient-berry-blast: linear-gradient(135deg, #FF4D8D 0%, #8B7CFF 100%);
+
+    --shadow-sm:
+      0 1px 2px rgba(27, 16, 35, 0.05),
+      0 0 0 1px rgba(27, 16, 35, 0.05);
+    --shadow-md:
+      0 6px 16px rgba(27, 16, 35, 0.07),
+      0 1px 3px rgba(27, 16, 35, 0.04),
+      0 0 0 1px rgba(27, 16, 35, 0.05);
+    --shadow-lg:
+      0 16px 36px rgba(27, 16, 35, 0.09),
+      0 4px 12px rgba(27, 16, 35, 0.05),
+      0 0 0 1px rgba(27, 16, 35, 0.06);
+    --shadow-xl:
+      0 32px 64px -12px rgba(27, 16, 35, 0.13),
+      0 16px 32px -10px rgba(27, 16, 35, 0.07),
+      0 0 0 1px rgba(27, 16, 35, 0.06);
+    --shadow-modal: 0 30px 60px rgba(27, 16, 35, 0.2), 0 0 0 1px rgba(27, 16, 35, 0.08);
+    --shadow-occlusion: inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 -1px 0 rgba(27, 16, 35, 0.06);
+    --shadow-primary:
+      0 0 20px rgba(255, 158, 27, 0.2),
+      0 0 40px rgba(255, 158, 27, 0.08);
+    --shadow-glow-active: 0 0 0 4px rgba(255, 158, 27, 0.3);
+    --shadow-glow-purple: 0 0 16px rgba(139, 92, 246, 0.12);
+    --shadow-glow-success: 0 0 16px rgba(79, 191, 42, 0.14);
+    --shadow-sticker: 3px 3px 0 rgba(27, 16, 35, 0.85);
+  }
+}

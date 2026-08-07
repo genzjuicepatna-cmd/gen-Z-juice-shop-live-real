@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFE7A8"/><stop offset="1" stop-color="#FFD26B"/>
+    </linearGradient>
+    <linearGradient id="liq" x1="0" y1="0" x2="0.35" y2="1">
+      <stop offset="0" stop-color="#FFB020"/><stop offset="1" stop-color="#F08A00"/>
+    </linearGradient>
+    <clipPath id="cup">
+      <path d="M132 158 L268 158 L248 338 Q246 356 228 356 L172 356 Q154 356 152 338 Z"/>
+    </clipPath>
+  </defs>
+
+  <rect width="400" height="400" fill="url(#bg)"/>
+  <circle cx="322" cy="78" r="92" fill="#FFFFFF" opacity=".20"/>
+  <circle cx="66" cy="336" r="70" fill="#1B1023" opacity=".07"/>
+
+  <!-- straw -->
+  <rect x="236" y="52" width="19" height="120" rx="9" fill="#FF4D8D" transform="rotate(13 245 112)"/>
+
+  <!-- cup body -->
+  <path d="M132 158 L268 158 L248 338 Q246 356 228 356 L172 356 Q154 356 152 338 Z" fill="url(#liq)"/>
+  <g clip-path="url(#cup)">
+    <ellipse cx="176" cy="250" rx="34" ry="120" fill="#FFFFFF" opacity=".22"/>
+    <path d="M132 300 L268 300 L248 338 Q246 356 228 356 L172 356 Q154 356 152 338 Z" fill="#1B1023" opacity=".10"/>
+  </g>
+
+  <!-- lid -->
+  <rect x="120" y="132" width="160" height="30" rx="15" fill="#FFF2CE"/>
+  <rect x="120" y="132" width="160" height="12" rx="6" fill="#FFFFFF" opacity=".30"/>
+
+  <!-- splash -->
+  <circle cx="300" cy="196" r="11" fill="#FFB020" opacity=".85"/>
+  <circle cx="322" cy="232" r="7" fill="#F08A00" opacity=".75"/>
+  <circle cx="86" cy="212" r="9" fill="#FFB020" opacity=".75"/>
+
+  <!-- fruit accent -->
+  <text x="306" y="330" font-size="82" text-anchor="middle">🥭</text>
+  <text x="96" y="150" font-size="46" text-anchor="middle">🥭</text>
+</svg>

@@ -1,0 +1,88 @@
+# Dependencies
+node_modules/
+
+# Production builds
+dist/
+playwright-report/
+test-results/
+lighthouse-report.json
+
+# UI redesign visual capture (~60 MB per run, regenerated on demand — see
+# docs/UI_CONTRACTS.md for how to reproduce the pre-redesign baseline)
+tests/e2e/__baseline__/
+tests/e2e/__after__/
+
+# Embedded JDKs
+jdk17/
+jdk21/
+
+# Capacitor / Android generated files
+android/app/build/
+android/build/
+android/.gradle/
+android/local.properties
+android/capacitor-cordova-android-plugins/
+android/app/src/main/assets/public/
+android/app/src/main/assets/builtin_cordova.js
+android/app/src/main/assets/cordova.js
+android/app/src/main/assets/cordova_plugins.js
+android/app/src/main/assets/plugins/
+
+# Log files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor directories and files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+.env.*
+!.env.example
+!.env.admin.example
+!.env.customer.example
+!.env.pos.example
+
+# Secrets and Credentials
+*.pem
+*.key
+*.p12
+*.jks
+*.keystore
+secrets.json
+*secret*.json
+credentials.json
+
+# Next.js build output/cache
+.next/
+
+# Generated version files
+public/version.json
+
+# Local Android SDK
+android-sdk/
+
+# Compiled Android packages
+*.apk
+artifacts/android/
+
+
+.vercel/
+*.tsbuildinfo
+
+# Screenshot captures shared with the user, regenerated on demand
+shots/
+sf/

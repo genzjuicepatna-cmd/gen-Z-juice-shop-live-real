@@ -107,4 +107,47 @@ begin
 end
 $$;
 
+-- 3. Customer offers ---------------------------------------------------------
+-- Two problems with the rows seeded by 202606290001, both of which reach the
+-- customer:
+--
+--   * The codes were 'BOOST' and 'FUSION', but the client's FALLBACK_OFFERS
+--     (src/services/customerPlatform.ts) advertises 'POWERBOOST' and
+--     'FRUITFUSION'. fetchCustomerOffers falls back whenever the device is
+--     offline or the query returns nothing, so which code a customer sees is
+--     down to connectivity — and half the time staff cannot find it.
+--
+--   * display_value carried a hard rupee amount ('Save ₹30'). That field is the
+--     prominent number on the offer card, and customerPlatform.ts:27-31 pins the
+--     rule: the board price belongs in the description, because the server owns
+--     eligibility and final price at checkout. A number there reads as a
+--     guarantee the server has not made.
+--
+-- The seed is realigned with FALLBACK_OFFERS so both sources say the same thing.
+
+do $$
+begin
+  if to_regclass('public.customer_offers') is null then
+    return;
+  end if;
+
+  delete from public.customer_offers
+  where store_id = 'trending-juice' and code in ('BOOST', 'FUSION');
+
+  insert into public.customer_offers (store_id, code, title, label, description, display_value, icon, sort_order)
+  values
+    ('trending-juice', 'POWERBOOST', 'Power Boost', 'Combo favourite', 'Any juice plus any shake — ₹120 on the board.', 'Server validates at checkout', 'bolt', 10),
+    ('trending-juice', 'FRUITFUSION', 'Fruit Fusion', 'Juice and a bite', 'Any juice with a fruit chaat on the side — ₹100 on the board.', 'Server validates at checkout', 'local_offer', 20),
+    ('trending-juice', 'COOLDUO', 'Cool Duo', 'For two', 'Any shake plus a cold coffee — ₹110 on the board.', 'Server validates at checkout', 'groups', 30),
+    ('trending-juice', 'REWARDS', 'Points on every order', 'Sip Club', 'Sign in before checkout and grow your rewards balance with every order.', 'Members', 'workspace_premium', 40)
+  on conflict (store_id, code) do update
+  set title = excluded.title,
+      label = excluded.label,
+      description = excluded.description,
+      display_value = excluded.display_value,
+      icon = excluded.icon,
+      sort_order = excluded.sort_order;
+end
+$$;
+
 commit;

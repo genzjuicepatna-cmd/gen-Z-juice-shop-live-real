@@ -228,8 +228,56 @@ export class RestaurantDatabase extends Dexie {
   localEmbeddings!: Dexie.Table<LocalEmbedding, number>;
 
   constructor() {
-    super('TrendingJuicePOS');
+    super(DB_NAME);
   }
+}
+
+/**
+ * The IndexedDB database name.
+ *
+ * Renaming it does not migrate anything — the browser simply opens a new, empty
+ * database and the old one becomes unreachable, still holding whatever was in
+ * it. Any rename needs the old name added to RETIRED_DB_NAMES below, and, if the
+ * store is live by then, a copy step before the purge: unsynced orders only
+ * exist here.
+ */
+export const DB_NAME = 'TrendingJuicePOS';
+
+/**
+ * Database names this app used to open, newest last.
+ *
+ * The move off 'TheTastePOS' happened before launch, so these hold seed data
+ * that regenerates rather than real orders, and they are dropped rather than
+ * copied across. Left alone they would sit in the browser forever — invisible to
+ * every code path, including the "clear offline cache" button, which can only
+ * delete the database the app currently opens.
+ */
+export const RETIRED_DB_NAMES: readonly string[] = ['TheTastePOS'];
+
+/**
+ * Drops databases left behind by an earlier name. Safe to call on every start:
+ * deleting a database that does not exist succeeds silently.
+ *
+ * Never rejects. A browser that blocks the delete (another tab still holds the
+ * old database open) is not a reason to fail startup — the next start retries.
+ */
+export async function purgeRetiredDatabases(): Promise<void> {
+  if (typeof indexedDB === 'undefined') return;
+
+  await Promise.all(
+    RETIRED_DB_NAMES.map(name => new Promise<void>(resolve => {
+      let request: IDBOpenDBRequest;
+      try {
+        request = indexedDB.deleteDatabase(name);
+      } catch {
+        resolve();
+        return;
+      }
+      request.onsuccess = () => resolve();
+      request.onerror = () => resolve();
+      request.onblocked = () => resolve();
+    }))
+  );
 }
 
 export const db = new RestaurantDatabase();

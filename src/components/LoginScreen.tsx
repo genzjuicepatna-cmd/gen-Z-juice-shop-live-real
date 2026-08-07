@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { authService } from '../services/auth';
 import { playSound, showToast, vibrateDevice } from '../utils/helpers';
+import { DB_NAME } from '../db/database';
 
 import { BRAND } from '../content/brand';
 type LoginCallback = (staff: unknown) => void;
@@ -55,7 +56,7 @@ function StaffLogin({ onClose, onLoginSuccess }: StaffLoginProps) {
     sessionStorage.clear();
     try {
       await new Promise<void>((resolve) => {
-        const request = indexedDB.deleteDatabase('TrendingJuicePOS');
+        const request = indexedDB.deleteDatabase(DB_NAME);
         request.onsuccess = () => resolve();
         request.onerror = () => resolve();
         request.onblocked = () => resolve();

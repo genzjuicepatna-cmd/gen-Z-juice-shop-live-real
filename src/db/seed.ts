@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { db, generateLocalUuid, getDisplayToken } from './database';
+import { db, generateLocalUuid, getDisplayToken, purgeRetiredDatabases } from './database';
 import { BRAND, CONTACT, addressLine } from '../content/brand';
 
 /**
@@ -352,6 +352,10 @@ export async function seedDatabase(options = {}) {
  */
 async function runMigrations() {
   try {
+    // Drop any database left behind by an earlier app name. Never rejects, so it
+    // cannot block the rest of the migration.
+    await purgeRetiredDatabases();
+
     await db.settings.bulkDelete(['adminPin', 'adminPinHash', 'requirePinForOrder']);
     const staffMembers = await db.staff.toArray();
     for (const staff of staffMembers) {

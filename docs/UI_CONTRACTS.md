@@ -250,16 +250,39 @@ expect diffs in the baseline around borders, focus states and transition timing.
 
 ---
 
-## 5. Data keys
+## 5. Data keys do not follow a rebrand on their own
 
-`'trending-juice'` is the **store identifier**. It is the
-`store_id` column in Supabase (`staff_memberships`, `staff`, orders, telemetry)
-and the `store_id` localStorage key.
+Three identifiers look like brand strings and are not. Each is a **key some
+system outside this repo already stores**, so changing one is a migration, not a
+rename. A find-and-replace across them is silent — nothing fails to compile, and
+the damage shows up as empty screens or lost data.
 
-| Identifier | Where | Purpose |
-|---|---|---|
-| `TrendingJuicePOS` | `new Dexie('TrendingJuicePOS')` in `src/db/database.ts`, and the matching `indexedDB.deleteDatabase` call in `LoginScreen.tsx` | The IndexedDB database name. |
-| `com.trendingjuice.pos` | `capacitor.config.json`, `android/app/src/main/res/values/strings.xml` | The Android application ID. |
+| Identifier | Where | What it keys | Cost of a bare rename |
+|---|---|---|---|
+| `'trending-juice'` | `STORE_ID` in `src/content/brand.ts` | The `store_id` column across ~23 Supabase tables, and the `store_id` localStorage key | Client asks for a tenant with no rows. Staff cannot sign in; orders, menu, offers and telemetry all read empty |
+| `TrendingJuicePOS` | `DB_NAME` in `src/db/database.ts` | The IndexedDB database | Browser opens a new empty database. Unsynced orders on that device become unreachable — including to the "clear offline cache" button, which can only delete the current name |
+| `com.trendingjuice.pos` | `android/app/build.gradle`, `capacitor.config.json`, `android/app/src/main/res/values/strings.xml` | The Play Store listing identity | Next release uploads as a **separate app**. Existing installs stop receiving updates; reviews and install counts do not carry over, and the listings cannot be merged |
+
+**This has already gone wrong once.** The move off `the-taste` changed all three
+and edited the `store_id` defaults inside migrations that had already been
+applied — which is a no-op against a database that already ran them, so the
+server stayed on the old key while the whole client moved. The repair is
+`supabase/migrations/20260808000000_retenant_the_taste_to_trending_juice.sql`.
+
+### If one of these genuinely has to change
+
+1. **Never edit an applied migration.** Add a new timestamped one that alters the
+   column defaults *and* `UPDATE`s existing rows in the same transaction. Note
+   that `scripts/validate-migrations.js` only parses — a green `npm run db:validate`
+   says nothing about whether the change reaches a live database.
+2. Add the old value to the matching retirement list — `RETIRED_STORE_IDS` in
+   `src/content/brand.ts`, `RETIRED_DB_NAMES` in `src/db/database.ts` — so
+   installed devices purge the stale key instead of rendering the retired brand.
+3. Check the literals that are not the constant: storage policies in
+   `20260716154206_launch_security_hardening.sql` pin the tenant key inline, and
+   the Edge functions default to it.
+4. For the application ID, confirm the app has never been published. Once it has,
+   this one has no migration — the identity is spent.
 
 
 ## 6. The data layer is online-first, not local-first

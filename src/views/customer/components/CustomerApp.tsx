@@ -15,7 +15,7 @@ import { STOREFRONT_DEFAULTS, STOREFRONT_SETTING_KEYS, resolveStorefrontCopy } f
 import { buildCustomerFavoritesFromOrders, fetchCustomerOffers, injectCustomerStructuredData, RETENTION_PREFERENCES, syncCustomerFavorite } from '../../../services/customerPlatform';
 import { startPublicMenuSync } from '../../../services/publicMenuSync';
 
-import { BRAND, STORE_ID, addressLine } from '../../../content/brand';
+import { BRAND, STORE_ID, RETIRED_STORE_IDS, addressLine } from '../../../content/brand';
 import { itemArt } from '../../../content/categoryArt';
 const PHONE_RE = /^[6-9]\d{9}$/;
 const CUSTOMER_PREFERENCE_OPTIONS = [
@@ -363,9 +363,16 @@ export function CustomerApp({ app }) {
     const [, queryString = ''] = (window.location.hash || '').split('?');
     const urlParams = new URLSearchParams(queryString);
     const storeIdParam = urlParams.get('store_id');
-    // STORE_ID, not a literal: a stale key left in localStorage by an earlier
-    // tenant would otherwise fall through to the foreign-store branch below and
-    // render the previous shop's name in place of this one's.
+    // A key this store used to answer to is not a foreign tenant — it is this
+    // one, under its previous brand. Purge it so the resolver below falls
+    // through to STORE_ID instead of rendering the retired name.
+    const storedStoreId = localStorage.getItem('store_id');
+    if (storedStoreId && RETIRED_STORE_IDS.includes(storedStoreId)) {
+      localStorage.removeItem('store_id');
+    }
+
+    // STORE_ID, not a literal: the tenant key lives in brand.ts so a rebrand is
+    // one edit rather than a hunt through every file that compares against it.
     const prevStoreId = localStorage.getItem('store_id') || STORE_ID;
     const storeId = storeIdParam || prevStoreId;
 

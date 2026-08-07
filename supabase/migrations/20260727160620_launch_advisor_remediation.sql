@@ -94,7 +94,12 @@ end
 $$;
 revoke all on function public.audit_order_changes() from public, anon, authenticated;
 
-revoke all on function public.rls_auto_enable() from public, anon, authenticated;
+do $$
+begin
+  if to_regprocedure('public.rls_auto_enable()') is not null then
+    execute 'revoke all on function public.rls_auto_enable() from public, anon, authenticated';
+  end if;
+end $$;
 drop function if exists public.prevent_modification();
 
 drop index if exists public.idx_rate_limits_window;

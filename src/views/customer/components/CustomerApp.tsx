@@ -151,6 +151,11 @@ export function CustomerApp({ app }) {
   const [activeDetailItem, setActiveDetailItem] = useState(null);
   const [showLoyaltyDrawer, setShowLoyaltyDrawer] = useState(false);
 
+  // Centralized Store Binding. The subscription below is the only writer;
+  // every cart read in this component (the grid, the drawers, the totals, the
+  // order payload) goes through it, so removing it takes the whole storefront
+  // down with a ReferenceError before first paint.
+  const [cart, setCart] = useState(globalStore.state.cart);
   const [logoUrl, setLogoUrl] = useState(BRAND.logo || '/assets/store-logo.svg');
   const [storeSettings, setStoreSettings] = useState({
     name: BRAND.name,

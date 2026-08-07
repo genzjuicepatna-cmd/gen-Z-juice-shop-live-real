@@ -13,196 +13,196 @@
           "name": "Anar Juice (Large)",
           "price": 80,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-juices.png"
         },
         {
           "id": 6,
           "name": "Anar Juice (XL)",
           "price": 150,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-juices.png"
         },
         {
           "id": 9,
           "name": "Apple (Large)",
           "price": 60,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-juices.png"
         },
         {
           "id": 10,
           "name": "Apple (XL)",
           "price": 100,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-juices.png"
         },
         {
           "id": 27,
           "name": "Banana Peanut (Large)",
           "price": 40,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-juices.png"
         },
         {
           "id": 28,
           "name": "Banana Peanut (XL)",
           "price": 70,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-juices.png"
         },
         {
           "id": 17,
           "name": "Banana Shake (Large)",
           "price": 30,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-shakes.png"
         },
         {
           "id": 18,
           "name": "Banana Shake (XL)",
           "price": 50,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-shakes.png"
         },
         {
           "id": 7,
           "name": "Beetroot Juice (Large)",
           "price": 30,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-juices.png"
         },
         {
           "id": 8,
           "name": "Beetroot Juice (XL)",
           "price": 50,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-juices.png"
         },
         {
           "id": 23,
           "name": "Cold Coffee (Large)",
           "price": 50,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-shakes.png"
         },
         {
           "id": 24,
           "name": "Cold Coffee (XL)",
           "price": 90,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-shakes.png"
         },
         {
           "id": 15,
           "name": "Fruit Chaat (Large)",
           "price": 30,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-juices.png"
         },
         {
           "id": 16,
           "name": "Fruit Chaat (XL)",
           "price": 50,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-juices.png"
         },
         {
           "id": 21,
           "name": "Khajoor Shake (Large)",
           "price": 40,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-shakes.png"
         },
         {
           "id": 22,
           "name": "Khajoor Shake (XL)",
           "price": 70,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-shakes.png"
         },
         {
           "id": 19,
           "name": "Mango Shake (Large)",
           "price": 40,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-shakes.png"
         },
         {
           "id": 20,
           "name": "Mango Shake (XL)",
           "price": 70,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-shakes.png"
         },
         {
           "id": 13,
           "name": "Mix Juice (Large)",
           "price": 50,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-juices.png"
         },
         {
           "id": 14,
           "name": "Mix Juice (XL)",
           "price": 90,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-juices.png"
         },
         {
           "id": 1,
           "name": "Mosambi (Large)",
           "price": 40,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-juices.png"
         },
         {
           "id": 2,
           "name": "Mosambi (XL)",
           "price": 70,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-juices.png"
         },
         {
           "id": 3,
           "name": "Orange Juice (Large)",
           "price": 30,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-juices.png"
         },
         {
           "id": 4,
           "name": "Orange Juice (XL)",
           "price": 50,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-juices.png"
         },
         {
           "id": 25,
           "name": "Papaya (Large)",
           "price": 15,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-juices.png"
         },
         {
           "id": 26,
           "name": "Papaya (XL)",
           "price": 25,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-juices.png"
         },
         {
           "id": 11,
           "name": "Pineapple (Large)",
           "price": 50,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-juices.png"
         },
         {
           "id": 12,
           "name": "Pineapple (XL)",
           "price": 80,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-juices.png"
         }
       ]
     },
@@ -216,112 +216,112 @@
           "name": "Butter Shake (Large)",
           "price": 40,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-shakes.png"
         },
         {
           "id": 30,
           "name": "Butter Shake (XL)",
           "price": 70,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-shakes.png"
         },
         {
           "id": 41,
           "name": "Butterscotch Shake (Large)",
           "price": 60,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-shakes.png"
         },
         {
           "id": 42,
           "name": "Butterscotch Shake (XL)",
           "price": 100,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-shakes.png"
         },
         {
           "id": 43,
           "name": "Dry Fruits Shake (Large)",
           "price": 60,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-shakes.png"
         },
         {
           "id": 44,
           "name": "Dry Fruits Shake (XL)",
           "price": 110,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-shakes.png"
         },
         {
           "id": 31,
           "name": "Khajoor Banana Shake (Large)",
           "price": 40,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-shakes.png"
         },
         {
           "id": 32,
           "name": "Khajoor Banana Shake (XL)",
           "price": 70,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-shakes.png"
         },
         {
           "id": 37,
           "name": "KitKat Shake (Large)",
           "price": 60,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-shakes.png"
         },
         {
           "id": 38,
           "name": "KitKat Shake (XL)",
           "price": 100,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-shakes.png"
         },
         {
           "id": 35,
           "name": "Oreo Shake (Large)",
           "price": 60,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-shakes.png"
         },
         {
           "id": 36,
           "name": "Oreo Shake (XL)",
           "price": 100,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-shakes.png"
         },
         {
           "id": 39,
           "name": "Strawberry Shake (Large)",
           "price": 60,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-shakes.png"
         },
         {
           "id": 40,
           "name": "Strawberry Shake (XL)",
           "price": 100,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-shakes.png"
         },
         {
           "id": 33,
           "name": "Vanilla Shake (Large)",
           "price": 60,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-shakes.png"
         },
         {
           "id": 34,
           "name": "Vanilla Shake (XL)",
           "price": 100,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-shakes.png"
         }
       ]
     },
@@ -335,42 +335,42 @@
           "name": "Lassi (Large)",
           "price": 30,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-lassi.png"
         },
         {
           "id": 50,
           "name": "Lassi (XL)",
           "price": 50,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-lassi.png"
         },
         {
           "id": 45,
           "name": "Lemon Water (Large)",
           "price": 20,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-mojitos.png"
         },
         {
           "id": 46,
           "name": "Lemon Water (XL)",
           "price": 30,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-mojitos.png"
         },
         {
           "id": 47,
           "name": "Virgin Mojito (Large)",
           "price": 50,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-mojitos.png"
         },
         {
           "id": 48,
           "name": "Virgin Mojito (XL)",
           "price": 90,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-mojitos.png"
         }
       ]
     },
@@ -384,21 +384,21 @@
           "name": "Cool Duo — Any Shake + Cold Coffee",
           "price": 110,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-shakes.png"
         },
         {
           "id": 52,
           "name": "Fruit Fusion — Any Juice + Fruit Chaat",
           "price": 100,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-juices.png"
         },
         {
           "id": 51,
           "name": "Power Boost — Any Juice + Any Shake",
           "price": 120,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "/assets/dish-shakes.png"
         }
       ]
     }

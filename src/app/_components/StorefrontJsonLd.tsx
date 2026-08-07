@@ -50,6 +50,10 @@ export function StorefrontJsonLd({ page = 'home' }: { page?: string }) {
     servesCuisine: STORE_PROFILE.cuisines,
     priceRange: STORE_PROFILE.priceRange,
     url: STORE_ORIGIN,
+    // Google will not show a Restaurant rich result without an image. Absolute,
+    // because consumers of JSON-LD do not resolve relative paths against the
+    // page the way metadataBase does for the OG tags.
+    image: `${STORE_ORIGIN}/icons/icon-512.png`,
     address: postalAddress,
     geo: {
       '@type': 'GeoCoordinates',
@@ -59,6 +63,13 @@ export function StorefrontJsonLd({ page = 'home' }: { page?: string }) {
     acceptsReservations: false,
     hasMenu: `${STORE_ORIGIN}/menu`
   };
+
+  // CONTACT.phone ships empty — it is filled in per store from Admin -> Branding
+  // — and an empty `telephone` is an invalid property rather than an absent one,
+  // so it is only attached once there is a number to attach.
+  if (STORE_PROFILE.phone) {
+    restaurant.telephone = STORE_PROFILE.phone;
+  }
 
   if (page === 'home' || page === 'menu') {
     restaurant.hasMenu = menuSchema();

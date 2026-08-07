@@ -25,6 +25,9 @@ export const STORE_PROFILE = {
   country: CONTACT.country,
   latitude: CONTACT.latitude,
   longitude: CONTACT.longitude,
+  // Empty until the store fills it in from Admin -> Branding. Consumers must
+  // treat '' as "no number" rather than emitting an empty value.
+  phone: CONTACT.phone,
   cuisines: ['Juice', 'Milkshakes', 'Beverages'],
   priceRange: '₹₹'
 };

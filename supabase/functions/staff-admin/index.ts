@@ -10,7 +10,18 @@ declare const Deno: {
 };
 
 const DEFAULT_STORE_ID = "trending-juice";
-const STAFF_ROLES = ["developer", "owner", "manager", "cashier", "kitchen", "waiter", "delivery"];
+// Must stay in sync with STAFF_ROLES in src/services/authGuards.ts and the
+// role check constraints on public.staff / public.staff_memberships.
+const STAFF_ROLES = [
+  "developer",
+  "owner",
+  "manager",
+  "cashier",
+  "kitchen",
+  "waiter",
+  "delivery",
+  "temporary_staff"
+];
 
 type StaffAdminPayload = {
   action?: string;
@@ -47,6 +58,50 @@ function bearerToken(req: Request) {
   const header = req.headers.get("authorization") || "";
   const match = header.match(/^Bearer\s+(.+)$/i);
   return match?.[1] || "";
+}
+
+/**
+ * Find a Supabase Auth user by exact email address.
+ *
+ * Do NOT reach for `serviceClient.auth.admin.listUsers({ filter })` here.
+ * auth-js only serializes `page` and `per_page` into the request; any `filter`
+ * passed to it is silently dropped. The call this replaced —
+ * `listUsers({ filter: email, page: 1, perPage: 5 })` — was therefore really
+ * asking GoTrue for "the 5 most recently created users in the project" (the
+ * endpoint's default sort is created_at desc) and then hoping the address we
+ * wanted happened to be among them. Every customer that signs up is an auth
+ * user too, so on a live store it essentially never was. That single silent
+ * mismatch broke both callers: `lookup-auth-user` reported "no login exists"
+ * for staff whose accounts were plainly there, and `invite-staff` sailed past
+ * its duplicate check and then failed on createUser with "already registered".
+ *
+ * GoTrue's admin endpoint does support `filter` (`email LIKE '%filter%'`), so
+ * call it directly and match the address exactly afterwards.
+ */
+async function findAuthUserByEmail(supabaseUrl: string, serviceRoleKey: string, email: string) {
+  const target = email.trim().toLowerCase();
+  const endpoint = new URL("/auth/v1/admin/users", supabaseUrl);
+  endpoint.searchParams.set("filter", target);
+  endpoint.searchParams.set("page", "1");
+  // A full address is a narrow substring match; this is a ceiling, not a page size.
+  endpoint.searchParams.set("per_page", "200");
+
+  const response = await fetch(endpoint.toString(), {
+    headers: {
+      apikey: serviceRoleKey,
+      Authorization: `Bearer ${serviceRoleKey}`
+    }
+  });
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new Error(`Auth lookup failed (${response.status}). ${detail}`.trim());
+  }
+
+  const body = await response.json();
+  const users = Array.isArray(body?.users) ? body.users : [];
+  // `filter` is a substring match, so "a@b.com" also matches "xa@b.com".
+  return users.find((user: any) => String(user?.email || "").toLowerCase() === target) || null;
 }
 
 async function getNextStaffId(serviceClient: ReturnType<typeof createClient>) {
@@ -350,13 +405,12 @@ Deno.serve(async (req: Request) => {
 
       // Refuse rather than silently adopt an existing login: the caller may be
       // about to grant this store's access to someone else's account.
-      const { data: existingList, error: existingListError } =
-        await serviceClient.auth.admin.listUsers({ filter: email, page: 1, perPage: 5 });
-      if (existingListError) return bad(`Auth lookup failed: ${existingListError.message}`, 500);
-
-      const alreadyThere = existingList?.users?.find(
-        (u: any) => u.email?.toLowerCase() === email
-      );
+      let alreadyThere: any = null;
+      try {
+        alreadyThere = await findAuthUserByEmail(supabaseUrl, serviceRoleKey, email);
+      } catch (lookupError) {
+        return bad(lookupError instanceof Error ? lookupError.message : String(lookupError), 500);
+      }
       if (alreadyThere) {
         return bad(
           "An auth account already exists for this email. Use lookup-auth-user, then upsert-staff with its cloudUserId to link it.",
@@ -444,26 +498,19 @@ Deno.serve(async (req: Request) => {
     if (action === "lookup-auth-user") {
       // Look up a Supabase Auth user by email to verify they have real credentials.
       // Only returns minimal info — never exposes passwords, tokens, etc.
-      const email = cleanText(payload.staff?.name || (payload as any).email, 320).toLowerCase();
+      // `payload.staff.name` is a legacy shape kept so an older deployed client
+      // keeps working; current callers send `email`.
+      const email = cleanText(payload.email || payload.staff?.name, 320).toLowerCase();
       if (!email || !email.includes("@")) {
         return bad("A valid email address is required.");
       }
 
-      // Use the admin API to list users filtered by email
-      const { data: userList, error: listError } = await serviceClient.auth.admin.listUsers({
-        filter: email,
-        page: 1,
-        perPage: 5,
-      });
-
-      if (listError) {
-        return bad(`Auth lookup failed: ${listError.message}`, 500);
+      let matchedUser: any = null;
+      try {
+        matchedUser = await findAuthUserByEmail(supabaseUrl, serviceRoleKey, email);
+      } catch (lookupError) {
+        return bad(lookupError instanceof Error ? lookupError.message : String(lookupError), 500);
       }
-
-      // Find an exact email match (listUsers filter is substring-based)
-      const matchedUser = userList?.users?.find(
-        (u: any) => u.email?.toLowerCase() === email
-      );
 
       if (!matchedUser) {
         return jsonResponse({

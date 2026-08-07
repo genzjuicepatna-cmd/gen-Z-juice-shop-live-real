@@ -41,9 +41,13 @@ const STATIC_ROUTES = [
 function readBrandOrigin() {
   const brandPath = path.join(root, 'src', 'content', 'brand.ts');
   const source = fs.readFileSync(brandPath, 'utf8');
-  const match = source.match(/export const STORE_ORIGIN\s*=\s*['"]([^'"]+)['"]/);
+  // Matches the STORE_ORIGIN_DEFAULT literal, not the exported STORE_ORIGIN,
+  // which is now an expression (env override) and would not parse here. Both
+  // sides read NEXT_PUBLIC_STORE_ORIGIN first, so they resolve to the same
+  // origin either way.
+  const match = source.match(/const STORE_ORIGIN_DEFAULT\s*=\s*['"]([^'"]+)['"]/);
   if (!match) {
-    throw new Error('[menu-snapshot] STORE_ORIGIN not found in src/content/brand.ts');
+    throw new Error('[menu-snapshot] STORE_ORIGIN_DEFAULT not found in src/content/brand.ts');
   }
   return match[1].replace(/\/+$/, '');
 }
@@ -139,12 +143,24 @@ function writeSitemap() {
   );
   console.log(`[menu-snapshot] Wrote sitemap with ${STATIC_ROUTES.length} routes.`);
 
+  // The staff POS build ships the same pre-rendered storefront shell as the
+  // customer build, so with a shared `Allow: /` the POS deployment was crawlable
+  // and indexable as a duplicate of the storefront. Only the customer portal is
+  // meant to be public.
+  const isPos = (process.env.NEXT_PUBLIC_APP_PORTAL || '').trim().toLowerCase() === 'pos';
+
   fs.writeFileSync(
     robotsPath,
-    `User-agent: *\nAllow: /\n\nSitemap: ${STORE_ORIGIN}/sitemap.xml\n`,
+    isPos
+      ? 'User-agent: *\nDisallow: /\n'
+      : `User-agent: *\nAllow: /\n\nSitemap: ${STORE_ORIGIN}/sitemap.xml\n`,
     'utf8'
   );
-  console.log(`[menu-snapshot] Wrote robots.txt for ${STORE_ORIGIN}.`);
+  console.log(
+    isPos
+      ? '[menu-snapshot] Wrote robots.txt disallowing all crawlers (POS portal).'
+      : `[menu-snapshot] Wrote robots.txt for ${STORE_ORIGIN}.`
+  );
 }
 
 async function fetchCatalogue() {

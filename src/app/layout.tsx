@@ -26,9 +26,31 @@ import '../styles/components-v2.css';
 import '../styles/storefront.css';
 import '../styles/storefront-static.css';
 
+/*
+ * The staff POS build ships this same storefront shell, so without this it was
+ * served with `index: true` and an `Allow: /` robots.txt — the operator
+ * deployment was crawlable and indexable as a duplicate of the storefront.
+ * robots.txt is the other half of this, written by scripts/build-menu-snapshot.js.
+ */
+const IS_POS_PORTAL = (process.env.NEXT_PUBLIC_APP_PORTAL || '').trim().toLowerCase() === 'pos';
+
+/*
+ * Social preview image.
+ *
+ * icon-512 is the only raster mark in the repo — store-logo.svg cannot be used,
+ * as no social scraper renders SVG. It is square, so the Twitter card is
+ * `summary` (built for a 1:1 image) rather than `summary_large_image`, which
+ * was previously declared with no image at all and rendered an empty card.
+ *
+ * To upgrade: add a 1200x630 image, point OG_IMAGE at it, and switch the card
+ * back to 'summary_large_image'.
+ */
+const OG_IMAGE = { url: '/icons/icon-512.png', width: 512, height: 512, alt: `${BRAND.name} logo` };
+
 export const metadata: Metadata = {
   metadataBase: new URL(STORE_ORIGIN),
   alternates: { canonical: '/' },
+  manifest: '/manifest.webmanifest',
   // Without these the page declared no icon at all, so every browser fell back
   // to requesting /favicon.ico and got a 404 — the single console error that
   // was holding Best Practices at 96.
@@ -40,7 +62,9 @@ export const metadata: Metadata = {
     ],
     apple: [{ url: '/icons/icon-192.png', sizes: '192x192' }],
   },
-  robots: { index: true, follow: true },
+  robots: IS_POS_PORTAL
+    ? { index: false, follow: false, nocache: true }
+    : { index: true, follow: true },
   // Describes what the shop actually sells, off its own board — not the
   // placeholder catalogue this copy was first written against.
   title: `${BRAND.name} — Fresh Juice, Shakes & Mojitos in Patna`,
@@ -54,11 +78,14 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_IN',
     siteName: BRAND.name,
+    url: STORE_ORIGIN,
+    images: [OG_IMAGE],
   },
   twitter: {
-    card: 'summary_large_image',
+    card: 'summary',
     title: `${BRAND.name} — Fresh Juice & Shakes in Patna`,
     description: `Order online, track your order, earn rewards and get support from ${BRAND.name}.`,
+    images: [OG_IMAGE.url],
   },
   appleWebApp: {
     capable: true,

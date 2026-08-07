@@ -63,13 +63,27 @@ export const CONTACT = {
 } as const;
 
 /**
- * Public origin, used for canonical URLs, OpenGraph and the sitemap.
+ * Public origin, used for canonical URLs, OpenGraph, JSON-LD and the sitemap.
  *
- * PLACEHOLDER — this is not a registered domain. Point it at the real one
- * before launch or every canonical URL and OG tag will reference a host that
- * does not resolve.
+ * This must be an origin that RESOLVES. It is not decoration: it is the address
+ * every page nominates as its own authoritative copy, so pointing it at a host
+ * that does not exist tells search engines the real version of the site is
+ * somewhere unreachable, and the site stops being indexable.
+ *
+ * That is not hypothetical. This was 'https://trendingjuice.in' — never
+ * registered, NXDOMAIN — while the site served from Vercel, which put a dead
+ * host in the canonical tag, the JSON-LD @id, robots.txt and every sitemap
+ * entry at once.
+ *
+ * Set NEXT_PUBLIC_STORE_ORIGIN in the deployment environment to override this,
+ * with no trailing slash. Change the default below once a real domain is
+ * registered and pointed at the deployment; scripts/build-menu-snapshot.js
+ * reads STORE_ORIGIN_DEFAULT directly, so the constant must stay a plain
+ * string literal on one line.
  */
-export const STORE_ORIGIN = 'https://trendingjuice.in';
+const STORE_ORIGIN_DEFAULT = 'https://juice-customer.vercel.app';
+
+export const STORE_ORIGIN = (process.env.NEXT_PUBLIC_STORE_ORIGIN || STORE_ORIGIN_DEFAULT).replace(/\/+$/, '');
 
 /**
  * Tenant key, NOT a display name. Never rendered anywhere in the UI.
